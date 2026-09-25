@@ -1,0 +1,50 @@
+{"id": 1, "category": "Recon", "tool": "Nmap", "attack": "Port Scanning", "code": "nmap -sS -O -p- 192.168.1.1", "rescue": "Block unused ports; use IDS to detect SYN scans"}
+{"id": 2, "category": "Recon", "tool": "Shodan", "attack": "IoT Device Discovery", "code": "query: 'port:22' AND 'city:New York'", "rescue": "Change default credentials; restrict internet exposure"}
+{"id": 3, "category": "Recon", "tool": "Whois", "attack": "Domain Information Gathering", "code": "whois example.com", "rescue": "Use WHOIS privacy protection; monitor domain changes"}
+{"id": 4, "category": "Web", "tool": "Burp Suite", "attack": "Proxy Interception", "code": "Intercept and modify HTTP requests", "rescue": "Use WAF to block malicious payloads; validate input on server side"}
+{"id": 5, "category": "Web", "tool": "SQLmap", "attack": "SQL Injection", "code": "sqlmap -u 'http://target.com/page?id=1' --dbs", "rescue": "Use parameterized queries; input validation"}
+{"id": 6, "category": "Web", "tool": "XSStrike", "attack": "Cross-Site Scripting", "code": "<script>alert(document.cookie)</script>", "rescue": "Encode output; use CSP headers"}
+{"id": 7, "category": "Web", "tool": "Acunetix", "attack": "Web Vulnerability Scanning", "code": "Automated scan of web app", "rescue": "Regular patching; secure coding practices"}
+{"id": 8, "category": "Network", "tool": "Wireshark", "attack": "Packet Sniffing", "code": "Capture traffic on eth0", "rescue": "Use encryption (TLS/SSH); monitor for anomalies"}
+{"id": 9, "category": "Network", "tool": "tcpdump", "attack": "Command-line Packet Capture", "code": "tcpdump -i eth0 -w capture.pcap", "rescue": "Monitor network traffic; use IDS/IPS"}
+{"id": 10, "category": "Network", "tool": "mitmproxy", "attack": "Man-in-the-Middle", "code": "mitmproxy -p 8080", "rescue": "Enforce HTTPS; certificate pinning"}
+{"id": 11, "category": "Exploit", "tool": "Metasploit", "attack": "EternalBlue (MS17-010)", "code": "use exploit/windows/smb/ms17_010_eternalblue", "rescue": "Apply MS17-010 patch; disable SMBv1"}
+{"id": 12, "category": "Exploit", "tool": "Exploit-DB", "attack": "CVE Exploits", "code": "Search CVE-2021-44228 (Log4Shell)", "rescue": "Update Log4j to v2.17+; WAF rules"}
+{"id": 13, "category": "Exploit", "tool": "Ghidra", "attack": "Reverse Engineering", "code": "Decompile binary to C code", "rescue": "Use ASLR, DEP, and code signing"}
+{"id": 14, "category": "Exploit", "tool": "IDA Pro", "attack": "Binary Analysis", "code": "Disassemble malware sample", "rescue": "Monitor file integrity; use EDR"}
+{"id": 15, "category": "Credential", "tool": "Hydra", "attack": "Brute Force SSH", "code": "hydra -l admin -P rockyou.txt ssh://192.168.1.1", "rescue": "Use fail2ban; key-based auth"}
+{"id": 16, "category": "Credential", "tool": "John the Ripper", "attack": "Password Cracking", "code": "john hash_file.txt", "rescue": "Use bcrypt/argon2 hashing; strong passwords"}
+{"id": 17, "category": "Credential", "tool": "Hashcat", "attack": "GPU Password Cracking", "code": "hashcat -m 0 -a 0 hashes.txt rockyou.txt", "rescue": "Use strong passwords; MFA"}
+{"id": 18, "category": "Credential", "tool": "Mimikatz", "attack": "LSASS Dump & Credential Extraction", "code": "sekurlsa::logonpasswords", "rescue": "Enable Credential Guard; restrict admin access"}
+{"id": 19, "category": "Credential", "tool": "Kerbrute", "attack": "Kerberoasting", "code": "python kerbrute.py -domain domain.com -users users.txt", "rescue": "Rotate SPN passwords; limit Kerberoastable accounts"}
+{"id": 20, "category": "Post-Exploit", "tool": "Powersploit", "attack": "PowerShell Attacks", "code": "Invoke-Mimikatz", "rescue": "Enable AMSI; restrict PowerShell execution policy"}
+{"id": 21, "category": "Post-Exploit", "tool": "Cobalt Strike", "attack": "Beacon Payload", "code": "generate payload for beacon", "rescue": "Monitor beacon traffic; use EDR to detect C2"}
+{"id": 22, "category": "Post-Exploit", "tool": "BloodHound", "attack": "Active Directory Mapping", "code": "Import AD data into BloodHound", "rescue": "Clean up AD permissions; use GPO to restrict privileges"}
+{"id": 23, "category": "Post-Exploit", "tool": "LinPEAS", "attack": "Linux Privilege Escalation", "code": "./linpeas.sh", "rescue": "Patch Linux kernel; monitor sudo usage"}
+{"id": 24, "category": "Post-Exploit", "tool": "WinPEAS", "attack": "Windows Privilege Escalation", "code": "./winPEAS.exe", "rescue": "Patch Windows; restrict admin rights"}
+{"id": 25, "category": "Wireless", "tool": "Aircrack-ng", "attack": "WPA2 Cracking", "code": "aircrack-ng -w rockyou.txt capture.cap", "rescue": "Use WPA3; strong passphrase; disable WPS"}
+{"id": 26, "category": "Wireless", "tool": "Reaver", "attack": "WPS Brute Force", "code": "reaver -i mon0 -b 00:11:22:33:44:55", "rescue": "Disable WPS on router; use WPA2/WPA3"}
+{"id": 27, "category": "Wireless", "tool": "Kismet", "attack": "Wireless Network Detection", "code": "kismet -c wlan0mon", "rescue": "Monitor rogue APs; use 802.1X authentication"}
+{"id": 28, "category": "Social Eng", "tool": "GoPhish", "attack": "Phishing Campaign", "code": "Deploy phishing template", "rescue": "User training; DMARC/DKIM/SPF; MFA"}
+{"id": 29, "category": "Social Eng", "tool": "Social-Engineer Toolkit (SET)", "attack": "Credential Harvesting", "code": "setoolkit > 2 Social-Engineering Attacks", "rescue": "Verify URLs; educate users on phishing"}
+{"id": 30, "category": "Social Eng", "tool": "Maltego", "attack": "OSINT Gathering", "code": "Map relationships between entities", "rescue": "Limit public information exposure"}
+{"id": 31, "category": "Rescue", "tool": "Snort", "attack": "Intrusion Detection", "code": "snort -A console -c /etc/snort/snort.conf", "rescue": "Update rules; tune alerts to reduce noise"}
+{"id": 32, "category": "Rescue", "tool": "Suricata", "attack": "Intrusion Prevention", "code": "suricata -c /etc/suricata/suricata.yaml", "rescue": "Enable IPS mode; block known malicious IPs"}
+{"id": 33, "category": "Rescue", "tool": "Wazuh", "attack": "XDR & SIEM", "code": "Collect logs from endpoints", "rescue": "Correlate events; automate response"}
+{"id": 34, "category": "Rescue", "tool": "Splunk", "attack": "Log Analysis", "code": "Search index=_internal", "rescue": "Monitor for anomalies; set up alerts"}
+{"id": 35, "category": "Rescue", "tool": "Velociraptor", "attack": "Forensics", "code": "Collect memory dump", "rescue": "Isolate host; preserve evidence"}
+{"id": 36, "category": "Rescue", "tool": "Autopsy", "attack": "Disk Forensics", "code": "Analyze disk image", "rescue": "Regular backups; monitor file integrity"}
+{"id": 37, "category": "Rescue", "tool": "Volatility", "attack": "Memory Forensics", "code": "volatility -f memory.dump --profile=Win7SP1x64 pslist", "rescue": "Monitor process list; detect rootkits"}
+{"id": 38, "category": "Rescue", "tool": "YARA", "attack": "Malware Signatures", "code": "yara rules.yar malware_sample.exe", "rescue": "Update rules; scan endpoints regularly"}
+{"id": 39, "category": "Rescue", "tool": "Suricata", "attack": "IDS/IPS", "code": "Block malicious IPs", "rescue": "Update rules; tune alerts"}
+{"id": 40, "category": "Rescue", "tool": "CrowdStrike Falcon", "attack": "EDR", "code": "Detect process anomalies", "rescue": "Isolate endpoint; kill malicious process"}
+{"id": 41, "category": "Rescue", "tool": "Microsoft Defender", "attack": "Antivirus/EDR", "code": "Scan file with Defender", "rescue": "Keep updated; use cloud-based protection"}
+{"id": 42, "category": "Rescue", "tool": "Carbon Black", "attack": "Endpoint Detection", "code": "Monitor process tree", "rescue": "Block unknown executables; isolate host"}
+{"id": 43, "category": "Rescue", "tool": "Palo Alto Networks", "attack": "Firewall", "code": "Block IP 10.0.0.1", "rescue": "Update firewall rules; monitor traffic"}
+{"id": 44, "category": "Rescue", "tool": "Cisco ASA", "attack": "Firewall", "code": "deny ip any any", "rescue": "Review ACLs; log denied traffic"}
+{"id": 45, "category": "Rescue", "tool": "Pfsense", "attack": "Open-source Firewall", "code": "Block port 22", "rescue": "Monitor logs; update packages"}
+{"id": 46, "category": "Rescue", "tool": "Cloudflare", "attack": "DDoS Protection", "code": "Enable WAF", "rescue": "Rate limiting; CAPTCHA for suspicious traffic"}
+{"id": 47, "category": "Rescue", "tool": "AWS WAF", "attack": "Web App Firewall", "code": "Block SQLi patterns", "rescue": "Update rules; monitor CloudFront logs"}
+{"id": 48, "category": "Rescue", "tool": "Azure Sentinel", "attack": "Cloud SIEM", "code": "Query security events", "rescue": "Correlate events; automate response"}
+{"id": 49, "category": "Rescue", "tool": "Google Chronicle", "attack": "Cloud SIEM", "code": "Search for malware IOCs", "rescue": "Monitor for anomalies; integrate with EDR"}
+{"id": 50, "category": "Rescue", "tool": "Microsoft 365 Defender", "attack": "Email Security", "code": "Block phishing email", "rescue": "Use DMARC; educate users; enable MFA"}
