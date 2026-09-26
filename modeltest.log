@@ -1,0 +1,132 @@
+6.8s 1 0.00s - Debugger warning: It seems that frozen modules are being used, which may
+6.8s 2 0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off
+6.8s 3 0.00s - to python to disable frozen modules.
+6.8s 4 0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.
+7.4s 5 0.00s - Debugger warning: It seems that frozen modules are being used, which may
+7.4s 6 0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off
+7.4s 7 0.00s - to python to disable frozen modules.
+7.4s 8 0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.
+8.6s 9 ======================================================================
+8.6s 10 SHADOWRONIN 8B - GGUF TEST
+8.6s 11 ======================================================================
+8.6s 12 
+8.6s 13 [1] Checking GPU...
+9.0s 14 /opt/bin/nvidia-smi
+9.0s 15 Mon Sep 21 12:36:38 2026
+9.0s 16 +-----------------------------------------------------------------------------------------+
+9.0s 17 | NVIDIA-SMI 580.159.04             Driver Version: 580.159.04     CUDA Version: 13.0     |
+9.0s 18 +-----------------------------------------+------------------------+----------------------+
+9.0s 19 | GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+9.0s 20 | Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+9.0s 21 |                                         |                        |               MIG M. |
+9.0s 22 |=========================================+========================+======================|
+9.0s 23 |   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |
+9.0s 24 | N/A   50C    P8             10W /   70W |       0MiB /  15360MiB |      0%      Default |
+9.0s 25 |                                         |                        |                  N/A |
+9.0s 26 +-----------------------------------------+------------------------+----------------------+
+9.0s 27 |   1  Tesla T4                       Off |   00000000:00:05.0 Off |                    0 |
+9.0s 28 | N/A   55C    P8             10W /   70W |       0MiB /  15360MiB |      0%      Default |
+9.0s 29 |                                         |                        |                  N/A |
+9.0s 30 +-----------------------------------------+------------------------+----------------------+
+9.0s 31 
+9.0s 32 +-----------------------------------------------------------------------------------------+
+9.0s 33 | Processes:                                                                              |
+9.0s 34 |  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+9.0s 35 |        ID   ID                                                               Usage      |
+9.0s 36 |=========================================================================================|
+9.0s 37 |  No running processes found                                                             |
+9.0s 38 +-----------------------------------------------------------------------------------------+
+9.0s 39 
+9.0s 40 
+9.0s 41 [2] Installing llama-cpp-python...
+12.0s 42 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 74.9/74.9 MB 25.6 MB/s eta 0:00:00
+12.2s 43 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 74.9/74.9 MB 25.6 MB/s eta 0:00:00
+24.3s 44 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 45.5/45.5 kB 2.7 MB/s eta 0:00:00
+24.5s 45 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 45.5/45.5 kB 2.7 MB/s eta 0:00:00
+296.7s 46 
+296.7s 47 [3] Downloading GGUF...
+298.2s 48 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 842.9/842.9 kB 14.1 MB/s eta 0:00:00
+298.3s 49 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 125.3/125.3 kB 8.7 MB/s eta 0:00:00
+298.3s 50 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 90.4 MB/s eta 0:00:00
+298.4s 51 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 842.9/842.9 kB 14.1 MB/s eta 0:00:00
+298.4s 52 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 125.3/125.3 kB 8.7 MB/s eta 0:00:00
+298.4s 53 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 90.4 MB/s eta 0:00:00
+302.0s 54 ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+302.0s 55 google-adk 1.29.0 requires google-cloud-bigquery-storage>=2.0.0, which is not installed.
+302.2s 56 ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+302.2s 57 google-adk 1.29.0 requires google-cloud-bigquery-storage>=2.0.0, which is not installed.
+302.2s 58 
+302.2s 59 ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+302.2s 60 google-adk 1.29.0 requires google-cloud-bigquery-storage>=2.0.0, which is not installed.
+303.3s 61 Traceback (most recent call last):
+303.3s 62 File "<string>", line 1, in <module>
+303.3s 63 File "/usr/local/lib/python3.12/dist-packages/papermill/execute.py", line 131, in execute_notebook
+303.3s 64 raise_for_execution_errors(nb, output_path)
+303.3s 65 File "/usr/local/lib/python3.12/dist-packages/papermill/execute.py", line 251, in raise_for_execution_errors
+303.3s 66 raise error
+303.3s 67 papermill.exceptions.PapermillExecutionError:
+303.3s 68 ---------------------------------------------------------------------------
+303.3s 69 Exception encountered at "In [1]":
+303.3s 70 ---------------------------------------------------------------------------
+303.3s 71 HTTPStatusError                           Traceback (most recent call last)
+303.3s 72 HTTPStatusError: Client error '401 Unauthorized' for url 'https://huggingface.co/aryankumar941/ShadowRonin-8B_v2/resolve/main/meta-llama-3.1-8b-instruct.Q3_K_M.gguf'
+303.3s 73 For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+303.3s 74 
+303.3s 75 The above exception was the direct cause of the following exception:
+303.3s 76 
+303.3s 77 GatedRepoError                            Traceback (most recent call last)
+303.3s 78 /tmp/ipykernel_22/2821072856.py in <cell line: 0>()
+303.3s 79 70 FILENAME = "meta-llama-3.1-8b-instruct.Q3_K_M.gguf"
+303.3s 80 71
+303.3s 81 ---> 72 MODEL_PATH = hf_hub_download(
+303.3s 82 73     repo_id=REPO_ID,
+303.3s 83 74     filename=FILENAME,
+303.3s 84 
+303.3s 85 /usr/local/lib/python3.12/dist-packages/huggingface_hub/utils/_validators.py in _inner_fn(*args, **kwargs)
+303.3s 86 89         kwargs = smoothly_deprecate_legacy_arguments(fn_name=fn.__name__, kwargs=kwargs)
+303.3s 87 90
+303.3s 88 ---> 91         return fn(*args, **kwargs)
+303.3s 89 92
+303.3s 90 93     return _inner_fn  # type: ignore
+303.3s 91 
+303.3s 92 /usr/local/lib/python3.12/dist-packages/huggingface_hub/utils/_http.py in _inner(*args, **kwargs)
+303.3s 93 264         token = _IS_DOWNLOAD_CALL.set(True)
+303.3s 94 265         try:
+303.3s 95 --> 266             return fn(*args, **kwargs)
+303.3s 96 267         finally:
+303.3s 97 268             _IS_DOWNLOAD_CALL.reset(token)
+303.3s 98 
+303.3s 99 /usr/local/lib/python3.12/dist-packages/huggingface_hub/file_download.py in hf_hub_download(repo_id, filename, subfolder, repo_type, revision, library_name, library_version, cache_dir, local_dir, user_agent, force_download, etag_timeout, token, local_files_only, headers, endpoint, tqdm_class, dry_run)
+303.3s 100 1020
+303.3s 101 1021     if local_dir is not None:
+303.3s 102 -> 1022         return _hf_hub_download_to_local_dir(
+303.3s 103 1023             # Destination
+303.3s 104 1024             local_dir=local_dir,
+303.3s 105 
+303.3s 106 /usr/local/lib/python3.12/dist-packages/huggingface_hub/file_download.py in _hf_hub_download_to_local_dir(local_dir, repo_id, repo_type, filename, revision, endpoint, etag_timeout, headers, token, cache_dir, force_download, local_files_only, tqdm_class, dry_run)
+303.3s 107 1415         # If still error, raise
+303.3s 108 1416         if head_call_error is not None:
+303.3s 109 -> 1417             _raise_on_head_call_error(head_call_error, force_download, local_files_only)
+303.3s 110 1418
+303.3s 111 1419     # From now on, etag, commit_hash and url are not None.
+303.3s 112 
+303.3s 113 /usr/local/lib/python3.12/dist-packages/huggingface_hub/file_download.py in _raise_on_head_call_error(head_call_error, force_download, local_files_only)
+303.3s 114 1947         # Repo not found or gated => let's raise the actual error
+303.3s 115 1948         # Unauthorized => likely a token issue => let's raise the actual error
+303.3s 116 -> 1949         raise head_call_error
+303.3s 117 1950     elif isinstance(head_call_error, FileMetadataError):
+303.3s 118 1951         # The call succeeded but the response lacked the metadata we need => a configuration issue, not connectivity.
+303.3s 119 
+303.3s 120 GatedRepoError: 401 Client Error. (Request ID: Root=1-6ab125fd-7a03bb1a781467b05da0aae6;73dbfb28-210c-48eb-a4ed-5c959c042cb4)
+303.3s 121 
+303.3s 122 Cannot access gated repo for url https://huggingface.co/aryankumar941/ShadowRonin-8B_v2/resolve/main/meta-llama-3.1-8b-instruct.Q3_K_M.gguf.
+303.3s 123 Access to model aryankumar941/ShadowRonin-8B_v2 is restricted. You must have access to it and be authenticated to access it. Please log in.
+303.3s 124 
+305.4s 125 /usr/local/lib/python3.12/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\|'
+305.4s 126 cells[i][c] = re.sub('\\\\\|', '|', cell)
+305.6s 127 /usr/local/lib/python3.12/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\_'
+305.6s 128 text = re.sub(r'_', '\_', text) # Escape underscores in display text
+306.2s 129 [NbConvertApp] Converting notebook __notebook__.ipynb to notebook
+306.5s 130 [NbConvertApp] Writing 21211 bytes to __notebook__.ipynb
+308.7s 131 [NbConvertApp] Converting notebook __notebook__.ipynb to html
+309.5s 132 [NbConvertApp] Writing 305058 bytes to __results__.html
