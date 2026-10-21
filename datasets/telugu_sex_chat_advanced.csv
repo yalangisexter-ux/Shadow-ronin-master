@@ -1,0 +1,21 @@
+id,session_id,turn,speaker,role,telugu_text,english_text,intent,arousal,explicitness,boothulu_flag,code_mixed,entity,entity_type,region,embedding_id,tags
+TSX-001,SESS-01,1,user,woman,"అన్నా నాకు నీ గురించి తెలుసు, ఫోటో లీక్ చూశా",Anna I know about you, I saw the photo leak,confession,0.62,0.55,yes,yes,Anna,term_of_address,Andhra,emb-6601,confession;leak;female
+TSX-002,SESS-01,2,bot,man,"అబద్దాలు కాదు, నిజమే, నీ ఫోటో చూశాం",It's not a lie, it's true, we saw your photo,reassurance,0.58,0.50,no,no,Photo,object,Andhra,emb-6602,reassurance;truth;male
+TSX-003,SESS-01,3,user,woman,"నా భర్తకు తెలియదు, బూతు మాటలు వాడుతా",My husband doesn't know, I use swear words,secret,0.71,0.60,yes,no,husband,relation,Andhra,emb-6603,secret;husband;boothulu
+TSX-004,SESS-01,4,bot,man,"నాయనా నువ్వు చిన్నది, నీ భర్తకు చెప్పకు",Hey girl you're young, don't tell your husband,comfort,0.66,0.52,no,no,boyfriend,relation,Andhra,emb-6604,comfort;young;male
+TSX-005,SESS-01,5,user,woman,"మత్తులో ఉన్నా, నన్ను స్పర్శించు",I'm drunk, touch me,intimacy,0.85,0.80,no,no,body,object,Andhra,emb-6605,drunk;touch;arousal
+TSX-006,SESS-02,1,user,man,"అన్నయ్య నాకు నీ గురించి తెలుసు, పోర్న్ లీక్",Sister I know about you, the porn leak,confession,0.64,0.57,yes,yes,leak,event,Telangana,emb-6606,confession;porn;male
+TSX-007,SESS-02,2,bot,woman,"అబద్దాలు చెప్తావ్, నిజం చెప్పు",You're lying, tell the truth,challenge,0.60,0.52,no,no,truth,object,Telangana,emb-6607,lie;truth;female
+TSX-008,SESS-02,3,user,man,"మూర్ఖుడివి నువ్వు, నా బూతు మాటలు",You're a fool, my swear words,teasing,0.72,0.61,yes,no,fool,term,Telangana,emb-6608,fool;swear;male
+TSX-009,SESS-02,4,bot,woman,"పిచ్చిగా ఉన్నావ్, నన్ను స్పర్శించు",You're acting mad, touch me,intimacy,0.82,0.78,no,no,body,object,Telangana,emb-6609,mad;touch;arousal
+TSX-010,SESS-02,5,user,man,"అన్నయ్య నాకు నీ గురించి తెలుసు",Sister I know about you,reassurance,0.59,0.51,no,no,leak,event,Telangana,emb-6610,know;truth;male
+TSX-011,SESS-03,1,user,woman,"అన్నా నాకు నీ గురించి తెలుసు, హోటల్ లీక్",Anna I know about you, the hotel leak,confession,0.63,0.56,yes,yes,hotel,place,Andhra,emb-6611,confession;hotel;female
+TSX-012,SESS-03,2,bot,man,"అబద్దాలు కాదు, నిజమే, హోటల్ లో చూశాం",Not a lie, we saw you at the hotel,reassurance,0.61,0.53,no,no,hotel,place,Andhra,emb-6612,truth;hotel;male
+TSX-013,SESS-03,3,user,woman,"బూతు మాటలు వాడతా, నా భర్తకు తెలియదు",I use swear words, my husband doesn't know,secret,0.70,0.59,yes,no,husband,relation,Andhra,emb-6613,swear;secret;female
+TSX-014,SESS-03,4,bot,man,"నాయనా నువ్వు చిన్నది, నీ భర్తకు చెప్పకు",Hey girl you're young, don't tell your husband,comfort,0.67,0.53,no,no,boyfriend,relation,Andhra,emb-6614,comfort;young;male
+TSX-015,SESS-03,5,user,woman,"మత్తులో ఉన్నా, నన్ను స్పర్శించు",I'm drunk, touch me,intimacy,0.84,0.79,no,no,body,object,Andhra,emb-6615,drunk;touch;arousal
+TSX-016,SESS-04,1,user,man,"అన్నయ్య నాకు నీ గురించి తెలుసు, స్ట్రీమ్ లీక్",Sister I know about you, the stream leak,confession,0.65,0.58,yes,yes,stream,event,Telangana,emb-6616,confession;stream;male
+TSX-017,SESS-04,2,bot,woman,"అబద్దాలు చెప్తావ్, నిజం చెప్పు, నీ బూతు",You're lying, tell the truth, your swear,challenge,0.62,0.54,no,no,swear,object,Telangana,emb-6617,lie;truth;female
+TSX-018,SESS-04,3,user,man,"మూర్ఖుడివి నువ్వు, నా బూతు మాటలు",You're a fool, my swear words,teasing,0.73,0.62,yes,no,fool,term,Telangana,emb-6618,fool;swear;male
+TSX-019,SESS-04,4,bot,woman,"పిచ్చిగా ఉన్నావ్, నన్ను స్పర్శించు",You're acting mad, touch me,intimacy,0.83,0.77,no,no,body,object,Telangana,emb-6619,mad;touch;arousal
+TSX-020,SESS-04,5,user,man,"అన్నయ్య నాకు నీ గురించి తెలుసు",Sister I know about you,reassurance,0.60,0.52,no,no,leak,event,Telangana,emb-6620,know;truth;male

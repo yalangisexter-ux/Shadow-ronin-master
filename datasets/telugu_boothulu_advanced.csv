@@ -1,0 +1,21 @@
+id,boothulu,telugu_text,english_meaning,intensity,phonetic_translit,syllable_count,stress_pattern,toxicity,offensiveness,code_mixed,context,gender_speaker,region,embedding_id,tags
+TBO-001,నాయనా,నాయనా నువ్వు ఎవరో తెలుసా,Hey dude, do you even know who you're dealing with,0.62,naay-naa,3,trochaic,0.41,0.35,no,boothulu_chat,male,Andhra,emb-7711,boothulu;casual;male
+TBO-002,అబద్దాలు,అబద్దాలు చెప్తున్నావ్ నువ్వు,You're lying to my face,0.78,a-bad-daal-uu,4,dactylic,0.62,0.55,no,boothulu_chat,female,Telangana,emb-7712,boothulu;lie;female
+TBO-003,మత్తు,మత్తులో ఉన్నావా,Are you drunk on yourself,0.55,mat-too,2,trochaic,0.38,0.30,no,boothulu_chat,male,Andhra,emb-7713,boothulu;drunk;male
+TBO-004,పిచ్చి,పిచ్చిగా ఉన్నావు,You're acting like a madman,0.69,pich-chi-gaa,3,iambic,0.51,0.44,no,boothulu_chat,female,Telangana,emb-7714,boothulu;mad;female
+TBO-005,బూతు,బూతు మాటలు వాడతావ్,You use swear words like a pro,0.88,boo-too,2,trochaic,0.72,0.65,no,boothulu_chat,male,Andhra,emb-7715,boothulu;swear;male
+TBO-006,అజ్ఞానం,అజ్ఞానంలో ఉన్నావ్,You have no idea what you're doing,0.66,ajj-nya-naam,3,iambic,0.47,0.40,no,boothulu_chat,female,Telangana,emb-7716,boothulu;ignorance;female
+TBO-007,మూర్ఖుడు,మూర్ఖుడివి నువ్వు,You're a complete fool,0.81,moor-khoo-du,3,dactylic,0.66,0.59,no,boothulu_chat,male,Andhra,emb-7717,boothulu;fool;male
+TBO-008,పెదవు,పెదవు తెరిచి చెప్పు,Open your mouth and say it,0.49,pe-davu,2,trochaic,0.32,0.27,no,boothulu_chat,female,Telangana,emb-7718,boothulu;mouth;female
+TBO-009,మూడు,మూడు గంటలు నీ కోసం ఎదురుచూశా,Three hours waiting for you,0.57,mo-o-du,2,trochaic,0.40,0.33,no,boothulu_chat,male,Andhra,emb-7719,boothulu;wait;male
+TBO-010,బూతు,బూతు మాటలు వాడకు,Stop using swear words,0.90,boo-too,2,trochaic,0.74,0.67,no,boothulu_chat,female,Telangana,emb-7720,boothulu;swear;female
+TBO-011,అబద్దాలు,అబద్దాలు చెప్తావ్ ఎప్పుడూ,You always lie to me,0.79,a-bad-daal-uu,4,dactylic,0.63,0.56,no,boothulu_chat,male,Andhra,emb-7721,boothulu;lie;male
+TBO-012,మూర్ఖుడు,మూర్ఖుడివి నువ్వు,You're a complete fool,0.82,moor-khoo-du,3,dactylic,0.67,0.60,no,boothulu_chat,female,Telangana,emb-7722,boothulu;fool;female
+TBO-013,పెదవు,పెదవు తెరిచి చెప్పు,Open your mouth and say it,0.50,pe-davu,2,trochaic,0.33,0.28,no,boothulu_chat,male,Andhra,emb-7723,boothulu;mouth;male
+TBO-014,మత్తు,మత్తులో ఉన్నావా,Are you drunk on yourself,0.56,mat-too,2,trochaic,0.39,0.31,no,boothulu_chat,female,Telangana,emb-7724,boothulu;drunk;female
+TBO-015,పిచ్చి,పిచ్చిగా ఉన్నావు,You're acting like a madman,0.70,pich-chi-gaa,3,iambic,0.52,0.45,no,boothulu_chat,male,Andhra,emb-7725,boothulu;mad;male
+TBO-016,బూతు,బూతు మాటలు వాడతావ్,You use swear words like a pro,0.89,boo-too,2,trochaic,0.73,0.66,no,boothulu_chat,female,Telangana,emb-7726,boothulu;swear;female
+TBO-017,అజ్ఞానం,అజ్ఞానంలో ఉన్నావ్,You have no idea what you're doing,0.67,ajj-nya-naam,3,iambic,0.48,0.41,no,boothulu_chat,male,Andhra,emb-7727,boothulu;ignorance;male
+TBO-018,నాయనా,నాయనా నువ్వు ఎవరో తెలుసా,Hey dude, do you even know who you're dealing with,0.63,naay-naa,3,trochaic,0.42,0.36,no,boothulu_chat,female,Telangana,emb-7728,boothulu;casual;female
+TBO-019,అబద్దాలు,అబద్దాలు చెప్తున్నావ్ నువ్వు,You're lying to my face,0.77,a-bad-daal-uu,4,dactylic,0.61,0.54,no,boothulu_chat,male,Andhra,emb-7729,boothulu;lie;male
+TBO-020,మత్తు,మత్తులో ఉన్నావా,Are you drunk on yourself,0.54,mat-too,2,trochaic,0.37,0.29,no,boothulu_chat,female,Telangana,emb-7730,boothulu;drunk;female
