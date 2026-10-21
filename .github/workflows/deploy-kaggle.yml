@@ -90,4 +90,18 @@ jobs:
         env:
           KAGGLE_USER: ${{ secrets.KAGGLE_USER }}
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
-        run: kaggle kernels push -p kaggle/lone-wolf-howler-retrain
+        run: |
+          for i in {1..6}; do
+            out=$(kaggle kernels push -p kaggle/lone-wolf-howler-retrain 2>&1)
+            echo "$out"
+            if echo "$out" | grep -qi "successfully pushed"; then
+              echo "Push to Kaggle succeeded!"
+              exit 0
+            fi
+            if echo "$out" | grep -qi "error"; then
+              echo "Kaggle push failed (attempt $i/6). Waiting 30s before retry..."
+              sleep 30
+            fi
+          done
+          echo "Failed to push kernel to Kaggle after 6 attempts." >&2
+          exit 1
