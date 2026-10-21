@@ -81,7 +81,9 @@ HF_REPO_ID = f"{HF_USER}/{HF_REPO}"
 RUNTIME_HF_REPO = os.environ.get("RUNTIME_HF_REPO", "Lone-Wolf-Howler-Runtime")
 RUNTIME_HF_REPO_ID = f"{HF_USER}/{RUNTIME_HF_REPO}"
 
-FORCE_SCRATCH_TRAINING = os.environ.get("FORCE_SCRATCH_TRAINING", "0") == "1"
+# Default to the training pipeline; set FORCE_SCRATCH_TRAINING=0 only for artifact recovery.
+FORCE_SCRATCH_TRAINING = os.environ.get("FORCE_SCRATCH_TRAINING", "1") == "1"
+ENABLE_GRPO = os.environ.get("ENABLE_GRPO", "0") == "1"
 SKIP_RECOVERY = os.environ.get("SKIP_HF_RECOVERY", "0") == "1"
 DISABLE_RAG = os.environ.get("DISABLE_RAG", "0") == "1"
 
@@ -2279,6 +2281,7 @@ def first_nonempty(record: Dict[str, Any], keys: List[str]) -> str:
 
 
 def extract_query_answer(record: Dict[str, Any]) -> Tuple[str, str]:
+    """Extract genuine instruction/response pairs; never invent a fake target."""
     messages = record.get("messages")
     if isinstance(messages, list):
         users, assistants = [], []
@@ -2291,11 +2294,25 @@ def extract_query_answer(record: Dict[str, Any]) -> Tuple[str, str]:
                 users.append(content)
             elif role in ("assistant", "model") and content:
                 assistants.append(content)
-        if users or assistants:
-            return (users[-1] if users else "",
-                    assistants[-1] if assistants else "")
-    return (first_nonempty(record, QUESTION_KEYS),
-            first_nonempty(record, ANSWER_KEYS))
+        if users and assistants:
+            return users[-1], assistants[-1]
+
+    query = first_nonempty(record, QUESTION_KEYS)
+    answer = first_nonempty(record, ANSWER_KEYS)
+    if query and answer:
+        return query, answer
+
+    # Support the repository's compact defensive-cybersecurity records.
+    attack = safe_scalar(record.get("attack", ""))
+    rescue = safe_scalar(record.get("rescue", ""))
+    tool = safe_scalar(record.get("tool", ""))
+    if attack and rescue:
+        subject = f" involving {tool}" if tool else ""
+        return (f"How can I reduce risk from {attack}{subject}?",
+                f"Defensive mitigation: {rescue}")
+
+    # Arbitrary metadata and lone text fields are not supervised examples.
+    return "", ""
 
 
 def _find_reasoning_field(record: Dict[str, Any]) -> str:
@@ -2369,18 +2386,19 @@ def build_training_example(tokenizer, query: str, answer: str) -> str:
     ])
 
 
-def standardize_to_chat(example: Dict[str, Any], tokenizer) -> Dict[str, Any]:
+def standardize_to_chat(example: Dict[str, Any], tokenizer) -> Optional[Dict[str, Any]]:
     query, answer = extract_query_answer(example)
-    if not query:
-        query = first_nonempty(example, ["text", "content", "title", "description"])
-    if not answer:
-        answer = first_nonempty(example, ["text", "content", "description", "solution"])
-    if not query:
-        query = "Please analyze the supplied information."
-    if not answer:
-        answer = "I do not have enough information to provide a grounded answer."
-    reasoning = _find_reasoning_field(example)
-    answer = _wrap_answer_with_reasoning(answer, reasoning)
+    query, answer = query.strip(), answer.strip()
+    if not query or not answer or len(query) < 3 or len(answer) < 3:
+        return None
+    if query.casefold() == answer.casefold():
+        return None
+    if answer.casefold() in {
+        "i do not know", "n/a", "na", "none", "null", "unknown",
+        "i do not have enough information to provide a grounded answer."
+    }:
+        return None
+    answer = _wrap_answer_with_reasoning(answer, "")
     return {"text": build_training_example(tokenizer, query, answer),
             "query": query, "answer": _extract_final_answer(answer)}
 
@@ -2501,25 +2519,46 @@ def get_or_create_dataset(tokenizer, normalized_files: List[str]):
     combined_path, combined_meta = combine_normalized_jsonl_files(normalized_files)
     cache_meta=os.path.join(PERMANENT_DATASET_DIR,"dataset_cache_meta.json")
     cache_path=os.path.join(PERMANENT_DATASET_DIR,"train_cache.jsonl")
-    expected={"version":3,"model_id":MODEL_ID,"prompt_version":2,"combined_sha256":combined_meta["sha256"],"total_records":combined_meta["total_records"]}
+    expected={"version":4,"model_id":MODEL_ID,"prompt_version":3,"combined_sha256":combined_meta["sha256"],"total_records":combined_meta["total_records"]}
     if os.path.exists(cache_meta) and os.path.exists(cache_path):
         try:
-            if json.loads(Path(cache_meta).read_text(encoding="utf-8"))==expected:
-                log("Using validated combined training dataset cache.")
-                return load_dataset("json",data_files=cache_path,split="train")
+            cached_meta = json.loads(Path(cache_meta).read_text(encoding="utf-8"))
+            if all(cached_meta.get(k) == v for k, v in expected.items()):
+                cached_ds = load_dataset("json", data_files=cache_path, split="train")
+                if len(cached_ds) == cached_meta.get("prepared_examples", -1) and len(cached_ds) > 0:
+                    log(f"Using validated training cache ({len(cached_ds)} quality-filtered examples).")
+                    return cached_ds
         except Exception as exc: log(f"Training cache invalid; rebuilding: {exc}")
     rows=[]
+    rejected = 0
+    seen_pairs = set()
     with open(combined_path,"r",encoding="utf-8",errors="replace") as fh:
         for line_no,raw in enumerate(fh,1):
             if not raw.strip(): continue
             try: record=json.loads(raw)
-            except Exception as exc: log(f"WARNING: combined JSONL line {line_no} skipped: {exc}"); continue
-            if not isinstance(record,dict): record={"text":str(record)}
-            rows.append(standardize_to_chat(record,tokenizer))
-    if not rows: raise RuntimeError("No usable training examples were produced.")
+            except Exception as exc: log(f"WARNING: combined JSONL line {line_no} skipped: {exc}"); rejected += 1; continue
+            if not isinstance(record,dict): rejected += 1; continue
+            row = standardize_to_chat(record,tokenizer)
+            if row is None:
+                rejected += 1
+                continue
+            pair_key = hashlib.sha256(
+                (row["query"].strip().casefold() + "\\0" + row["answer"].strip().casefold()).encode("utf-8")
+            ).hexdigest()
+            if pair_key in seen_pairs:
+                rejected += 1
+                continue
+            seen_pairs.add(pair_key)
+            rows.append(row)
+    if len(rows) < 8:
+        raise RuntimeError(
+            f"Only {len(rows)} valid distinct instruction/answer pairs remain after filtering; "
+            "at least 8 are required. Inspect the dataset schema before training."
+        )
+    log(f"Training data quality filter: accepted={len(rows)} rejected/duplicate={rejected}")
     with open(cache_path,"w",encoding="utf-8") as fh:
         for row in rows: fh.write(json.dumps(row,ensure_ascii=False)+"\n")
-    Path(cache_meta).write_text(json.dumps({**expected,"prepared_examples":len(rows)},indent=2,ensure_ascii=False),encoding="utf-8")
+    Path(cache_meta).write_text(json.dumps({**expected,"prepared_examples":len(rows),"rejected_or_duplicate":rejected},indent=2,ensure_ascii=False),encoding="utf-8")
     log(f"Prepared {len(rows)} combined training examples.")
     return load_dataset("json",data_files=cache_path,split="train")
 
@@ -2975,8 +3014,9 @@ def _preflight_model_forward(model, tokenizer, label: str = "preflight") -> None
 # =============================================================================
 
 MASTER_STATE_PATH = os.path.join(STATE_BASE_DIR, "master_pipeline_state.json")
-SFT_STAGE_DIR = os.path.join(PERMANENT_CHECKPOINT_DIR, "sft_train")
-GRPO_STAGE_DIR = os.path.join(PERMANENT_GRPO_CHECKPOINT_DIR, "grpo_train")
+# Versioned stage paths prevent reuse of adapters from the unfiltered data pipeline.
+SFT_STAGE_DIR = os.path.join(PERMANENT_CHECKPOINT_DIR, "sft_train_v3")
+GRPO_STAGE_DIR = os.path.join(PERMANENT_GRPO_CHECKPOINT_DIR, "grpo_train_v3")
 SFT_HF_REMOTE = "checkpoints/sft_latest"
 GRPO_HF_REMOTE = "checkpoints/grpo_latest"
 
@@ -3111,6 +3151,7 @@ def train_sft(model_id: str, tokenizer, dataset) -> str:
 
         sft_kwargs = dict(
             output_dir=SFT_STAGE_DIR, overwrite_output_dir=False,
+            assistant_only_loss=True,
             num_train_epochs=1, per_device_train_batch_size=1,
             gradient_accumulation_steps=8, learning_rate=2e-4,
             logging_strategy="steps", logging_steps=1, logging_first_step=True,
@@ -3663,10 +3704,14 @@ def run_scratch_mode(start_time: float, bnb_preflight_done: bool = False) -> int
     dataset = get_or_create_dataset(tok, normalized)
     sft_dir = train_sft(MODEL_ID, tok, dataset)
 
-    grpo_dataset = build_grpo_dataset(tok, normalized)
-    grpo_dir = train_grpo(MODEL_ID, tok, grpo_dataset, sft_dir)
-
-    adapter = find_adapter_dir(grpo_dir)
+    if ENABLE_GRPO:
+        grpo_dataset = build_grpo_dataset(tok, normalized)
+        grpo_dir = train_grpo(MODEL_ID, tok, grpo_dataset, sft_dir)
+        adapter = find_adapter_dir(grpo_dir)
+        log("[training] GRPO enabled by explicit configuration.")
+    else:
+        adapter = find_adapter_dir(sft_dir)
+        log("[training] GRPO skipped by default: lexical-overlap rewards are not reliable enough to improve answer quality.")
     fp16_dir = merge_to_fp16(MODEL_ID, adapter, PERMANENT_EXPORT_DIR)
     smoke_test_hf_model(fp16_dir, rag=rag)
 
@@ -3717,6 +3762,7 @@ def main() -> int:
     log(f"MODEL_ID={MODEL_ID}")
     log(f"HF_REPO_ID={HF_REPO_ID}")
     log(f"FORCE_SCRATCH_TRAINING={FORCE_SCRATCH_TRAINING}")
+    log(f"ENABLE_GRPO={ENABLE_GRPO}")
     log(f"SKIP_HF_RECOVERY={SKIP_RECOVERY}")
     log(f"DISABLE_RAG={DISABLE_RAG}")
     log(f"RUNTIME_HF_REPO_ID={RUNTIME_HF_REPO_ID}")
