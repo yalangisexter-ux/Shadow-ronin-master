@@ -34,6 +34,10 @@ jobs:
         run: |
           python -m pip install --upgrade kaggle
           mkdir -p ~/.kaggle
+          # Support modern Kaggle access tokens (KGAT_...)
+          echo -n "$KAGGLE_API_TOKEN" > ~/.kaggle/access_token
+          chmod 600 ~/.kaggle/access_token
+          # Also write legacy kaggle.json for CLI fallback compatibility
           python - <<'PY'
           import json, os
           p = os.path.expanduser("~/.kaggle/kaggle.json")
@@ -41,19 +45,41 @@ jobs:
               json.dump({"username": os.environ["KAGGLE_USER"], "key": os.environ["KAGGLE_API_TOKEN"]}, f)
           os.chmod(p, 0o600)
           PY
-      - name: Set notebook owner and validate metadata
+      - name: Set notebook owner and inject secrets
         shell: bash
         env:
           KAGGLE_USER: ${{ secrets.KAGGLE_USER }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python - <<'PY'
           import json, os
-          path = "kaggle/lone-wolf-howler-retrain/kernel-metadata.json"
-          with open(path, encoding="utf-8") as f:
+
+          # Update notebook slug & owner to match existing kernel
+          meta_path = "kaggle/lone-wolf-howler-retrain/kernel-metadata.json"
+          with open(meta_path, encoding="utf-8") as f:
               meta = json.load(f)
-          meta["id"] = os.environ["KAGGLE_USER"] + "/lone-wolf-howler-retrain"
-          with open(path, "w", encoding="utf-8") as f:
+          meta["id"] = os.environ["KAGGLE_USER"] + "/lone-wolf-howler-guarded-retraining"
+          meta["title"] = "Lone-Wolf-Howler Guarded Retraining"
+          with open(meta_path, "w", encoding="utf-8") as f:
               json.dump(meta, f, indent=2)
+
+          # Inject HF_TOKEN into notebook if provided as a GitHub secret
+          hf = os.environ.get("HF_TOKEN", "").strip()
+          if hf:
+              nb_path = "kaggle/lone-wolf-howler-retrain/Lone-Wolf-Howler-Retrain.ipynb"
+              with open(nb_path, encoding="utf-8") as f:
+                  nb = json.load(f)
+              for cell in nb.get("cells", []):
+                  if cell.get("cell_type") == "code":
+                      cell["source"].insert(0, f"import os\nos.environ['HF_TOKEN'] = {repr(hf)}\n")
+                      break
+              with open(nb_path, "w", encoding="utf-8") as f:
+                  json.dump(nb, f, indent=2)
+              print("Injected HF_TOKEN into notebook from GitHub secrets.")
           PY
       - name: Push notebook and start Kaggle run
+        shell: bash
+        env:
+          KAGGLE_USER: ${{ secrets.KAGGLE_USER }}
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
         run: kaggle kernels push -p kaggle/lone-wolf-howler-retrain
