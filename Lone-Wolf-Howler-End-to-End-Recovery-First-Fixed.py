@@ -112,9 +112,9 @@ PERMANENT_BASE_DIR = SCRATCH_BASE_DIR
 PERMANENT_DATASET_DIR = os.path.join(SCRATCH_BASE_DIR, "dataset_cache")
 PERMANENT_CHECKPOINT_DIR = os.path.join(SCRATCH_BASE_DIR, "checkpoints")
 PERMANENT_GRPO_CHECKPOINT_DIR = os.path.join(SCRATCH_BASE_DIR, "grpo_checkpoints")
-PERMANENT_EXPORT_DIR = os.path.join(SCRATCH_BASE_DIR, "gguf_ready_model_v3")
+PERMANENT_EXPORT_DIR = os.path.join(SCRATCH_BASE_DIR, "gguf_ready_model_v4")
 DOWNLOADED_FP16_DIR = os.path.join(SCRATCH_BASE_DIR, "downloaded_fp16_model")
-GGUF_OUTPUT_DIR = os.path.join(SCRATCH_BASE_DIR, "gguf_quantized_models_v3")
+GGUF_OUTPUT_DIR = os.path.join(SCRATCH_BASE_DIR, "gguf_quantized_models_v4")
 DOWNLOADED_DATA_DIR = os.path.join(KAGGLE_WORKING_DIR, "extra_data")
 
 RAG_INDEX_DIR = os.path.join(STATE_BASE_DIR, "rag_index")
@@ -126,7 +126,7 @@ VALIDATION_REPORT_PATH = os.path.join(STATE_BASE_DIR, "jsonl_validation_report.j
 RUNTIME_COMPAT_REPORT_PATH = os.path.join(STATE_BASE_DIR, "runtime_compatibility_report.json")
 HF_RECOVERY_REPORT_PATH = os.path.join(STATE_BASE_DIR, "hf_recovery_report.json")
 PIPELINE_MARKER_PATH = os.path.join(STATE_BASE_DIR, "pipeline_marker.json")
-GGUF_STATE_PATH = os.path.join(STATE_BASE_DIR, "gguf_stage_state_v3.json")
+GGUF_STATE_PATH = os.path.join(STATE_BASE_DIR, "gguf_stage_state_v4.json")
 
 KAGGLE_USERNAME = os.environ.get("KAGGLE_USERNAME", "aryankumaryalangi")
 KAGGLE_DATASET_NAME = os.environ.get("KAGGLE_DATASET_NAME", "Mydataset2")
@@ -3015,8 +3015,8 @@ def _preflight_model_forward(model, tokenizer, label: str = "preflight") -> None
 
 MASTER_STATE_PATH = os.path.join(STATE_BASE_DIR, "master_pipeline_state.json")
 # Versioned stage paths prevent reuse of adapters from the unfiltered data pipeline.
-SFT_STAGE_DIR = os.path.join(PERMANENT_CHECKPOINT_DIR, "sft_train_v3")
-GRPO_STAGE_DIR = os.path.join(PERMANENT_GRPO_CHECKPOINT_DIR, "grpo_train_v3")
+SFT_STAGE_DIR = os.path.join(PERMANENT_CHECKPOINT_DIR, "sft_train_v4")
+GRPO_STAGE_DIR = os.path.join(PERMANENT_GRPO_CHECKPOINT_DIR, "grpo_train_v4")
 SFT_HF_REMOTE = "checkpoints/sft_latest"
 GRPO_HF_REMOTE = "checkpoints/grpo_latest"
 
@@ -3404,14 +3404,14 @@ def merge_to_fp16(base_model_id: str, adapter_dir: str, output_dir: str):
     from peft import PeftModel
     _neutralize_torchao()
 
-    if _stage_is_done("FP16_MERGE_V3") and os.path.isdir(output_dir):
+    if _stage_is_done("FP16_MERGE_V4") and os.path.isdir(output_dir):
         log(f"[merge] existing completed FP16 reused: {output_dir}")
         return output_dir
 
     if not _adapter_is_valid(adapter_dir):
         raise RuntimeError(f"Cannot merge: invalid adapter {adapter_dir}")
 
-    _set_master_stage("FP16_MERGE_V3", "RUNNING", output_dir=output_dir)
+    _set_master_stage("FP16_MERGE_V4", "RUNNING", output_dir=output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
     # Never delete an existing merge directory on restart. A partial directory
@@ -3427,7 +3427,7 @@ def merge_to_fp16(base_model_id: str, adapter_dir: str, output_dir: str):
     tok.save_pretrained(output_dir)
 
     validate_recovered_fp16_bnb_free(output_dir)
-    _set_master_stage("FP16_MERGE_V3", "DONE", output_dir=output_dir)
+    _set_master_stage("FP16_MERGE_V4", "DONE", output_dir=output_dir)
     del model, base, merged
     _deep_cleanup("after FP16 merge")
     log(f"FP16 merged model saved: {output_dir}")
@@ -3572,7 +3572,7 @@ def _publish_fp16_only(fp16_dir: str) -> None:
             local = os.path.join(root, fname)
             rel = os.path.relpath(local, fp16_dir).replace(os.sep, "/")
             _hf_upload_file(api, local, f"fp16_model/{rel}")
-    _set_master_stage("FP16_PUBLISHED_V3", "DONE", remote=HF_REPO_ID)
+    _set_master_stage("FP16_PUBLISHED_V4", "DONE", remote=HF_REPO_ID)
 
 def _capture_runtime_bundle() -> Optional[str]:
     bundle = os.path.join(STATE_BASE_DIR, "runtime_bundle")
@@ -3731,7 +3731,7 @@ def run_scratch_mode(start_time: float, bnb_preflight_done: bool = False) -> int
     fp16_dir = merge_to_fp16(MODEL_ID, adapter, PERMANENT_EXPORT_DIR)
     smoke_test_hf_model(fp16_dir, rag=rag)
 
-    if not _stage_is_done("FP16_PUBLISHED_V3"):
+    if not _stage_is_done("FP16_PUBLISHED_V4"):
         _publish_fp16_only(fp16_dir)
     else:
         log("[FP16] already published; skipping upload")
