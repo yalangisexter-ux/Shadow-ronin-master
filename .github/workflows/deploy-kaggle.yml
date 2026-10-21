@@ -50,6 +50,8 @@ jobs:
         env:
           KAGGLE_USER: ${{ secrets.KAGGLE_USER }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          MODEL_ID: ${{ secrets.MODEL_ID }}
+          HF_REPO: ${{ secrets.HF_REPO }}
         run: |
           python - <<'PY'
           import json, os
@@ -63,19 +65,25 @@ jobs:
           with open(meta_path, "w", encoding="utf-8") as f:
               json.dump(meta, f, indent=2)
 
-          # Inject HF_TOKEN into notebook if provided as a GitHub secret
-          hf = os.environ.get("HF_TOKEN", "").strip()
-          if hf:
-              nb_path = "kaggle/lone-wolf-howler-retrain/Lone-Wolf-Howler-Retrain.ipynb"
-              with open(nb_path, encoding="utf-8") as f:
-                  nb = json.load(f)
+          nb_path = "kaggle/lone-wolf-howler-retrain/Lone-Wolf-Howler-Retrain.ipynb"
+          with open(nb_path, encoding="utf-8") as f:
+              nb = json.load(f)
+
+          env_injections = []
+          for key in ["HF_TOKEN", "MODEL_ID", "HF_REPO"]:
+              val = os.environ.get(key, "").strip()
+              if val:
+                  env_injections.append(f"os.environ[{repr(key)}] = {repr(val)}")
+
+          if env_injections:
+              inject_code = "import os\n" + "\n".join(env_injections) + "\n"
               for cell in nb.get("cells", []):
                   if cell.get("cell_type") == "code":
-                      cell["source"].insert(0, f"import os\nos.environ['HF_TOKEN'] = {repr(hf)}\n")
+                      cell["source"].insert(0, inject_code)
                       break
               with open(nb_path, "w", encoding="utf-8") as f:
                   json.dump(nb, f, indent=2)
-              print("Injected HF_TOKEN into notebook from GitHub secrets.")
+              print(f"Injected environment variables into notebook: {len(env_injections)}")
           PY
       - name: Push notebook and start Kaggle run
         shell: bash
