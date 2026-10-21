@@ -15,16 +15,16 @@ jobs:
       - name: Validate required Kaggle secrets
         shell: bash
         env:
-          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          KAGGLE_USER: ${{ secrets.KAGGLE_USER }}
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
         run: |
-          test -n "$KAGGLE_USERNAME" || (echo "Missing repository secret KAGGLE_USERNAME" >&2; exit 1)
-          test -n "$KAGGLE_KEY" || (echo "Missing repository secret KAGGLE_KEY" >&2; exit 1)
+          test -n "$KAGGLE_USER" || (echo "Missing repository secret KAGGLE_USER" >&2; exit 1)
+          test -n "$KAGGLE_API_TOKEN" || (echo "Missing repository secret KAGGLE_API_TOKEN" >&2; exit 1)
       - name: Configure Kaggle CLI
         shell: bash
         env:
-          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          KAGGLE_USER: ${{ secrets.KAGGLE_USER }}
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
         run: |
           python -m pip install --upgrade kaggle
           mkdir -p ~/.kaggle
@@ -32,20 +32,20 @@ jobs:
           import json, os
           p = os.path.expanduser("~/.kaggle/kaggle.json")
           with open(p, "w", encoding="utf-8") as f:
-              json.dump({"username": os.environ["KAGGLE_USERNAME"], "key": os.environ["KAGGLE_KEY"]}, f)
+              json.dump({"username": os.environ["KAGGLE_USER"], "key": os.environ["KAGGLE_API_TOKEN"]}, f)
           os.chmod(p, 0o600)
           PY
       - name: Set notebook owner and validate metadata
         shell: bash
         env:
-          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_USER: ${{ secrets.KAGGLE_USER }}
         run: |
           python - <<'PY'
           import json, os
           path = "kaggle/lone-wolf-howler-retrain/kernel-metadata.json"
           with open(path, encoding="utf-8") as f:
               meta = json.load(f)
-          meta["id"] = os.environ["KAGGLE_USERNAME"] + "/lone-wolf-howler-retrain"
+          meta["id"] = os.environ["KAGGLE_USER"] + "/lone-wolf-howler-retrain"
           with open(path, "w", encoding="utf-8") as f:
               json.dump(meta, f, indent=2)
           PY
