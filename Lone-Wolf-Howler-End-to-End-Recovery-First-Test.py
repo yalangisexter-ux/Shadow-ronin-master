@@ -2969,9 +2969,17 @@ def load_quantized_base(model_id: str):
         bnb = BitsAndBytesConfig(
             load_in_4bit=True, bnb_4bit_quant_type="nf4",
             bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=compute_dtype)
-        return AutoModelForCausalLM.from_pretrained(
-            model_id, quantization_config=bnb, device_map={"": 0},
-            trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id, quantization_config=bnb, torch_dtype=compute_dtype,
+            device_map={"": 0}, trust_remote_code=True)
+        if not torch.cuda.is_bf16_supported():
+            for p in model.parameters():
+                if p.dtype == torch.bfloat16:
+                    p.data = p.data.to(torch.float16)
+            for b in model.buffers():
+                if b.dtype == torch.bfloat16:
+                    b.data = b.data.to(torch.float16)
+        return model
     return AutoModelForCausalLM.from_pretrained(
         model_id, torch_dtype=torch.float32, device_map=None,
         trust_remote_code=True)

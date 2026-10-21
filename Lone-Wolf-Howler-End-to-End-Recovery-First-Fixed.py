@@ -3028,9 +3028,17 @@ def load_quantized_base(model_id: str):
         bnb = BitsAndBytesConfig(
             load_in_4bit=True, bnb_4bit_quant_type="nf4",
             bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=compute_dtype)
-        return AutoModelForCausalLM.from_pretrained(
-            model_id, quantization_config=bnb, device_map={"": 0},
-            trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id, quantization_config=bnb, torch_dtype=compute_dtype,
+            device_map={"": 0}, trust_remote_code=True)
+        if not torch.cuda.is_bf16_supported():
+            for p in model.parameters():
+                if p.dtype == torch.bfloat16:
+                    p.data = p.data.to(torch.float16)
+            for b in model.buffers():
+                if b.dtype == torch.bfloat16:
+                    b.data = b.data.to(torch.float16)
+        return model
     return AutoModelForCausalLM.from_pretrained(
         model_id, torch_dtype=torch.float32, device_map=None,
         trust_remote_code=True)
@@ -3050,6 +3058,32 @@ def patch_forward_for_trl(model) -> None:
         log(f"TRL forward signature ready: {inspect.signature(model.forward)}")
     except Exception as exc:
         log(f"Forward signature inspection warning: {exc}")
+
+    try:
+        import trl.kernels.chunked_logprob as clp
+        import torch
+        if hasattr(clp, "_MM_OUT_DTYPE"):
+            if not (torch.cuda.is_available() and torch.cuda.is_bf16_supported()):
+                clp._MM_OUT_DTYPE = False
+                log("Disabled clp._MM_OUT_DTYPE for compute capability < 8.0")
+
+        orig_addmm = getattr(clp, "_addmm_fp32", None)
+        if orig_addmm is not None:
+            def _safe_addmm(acc, a, b):
+                try:
+                    if getattr(clp, "_MM_OUT_DTYPE", False) and acc.device.type == "cuda" and a.dtype in (torch.float16, torch.bfloat16):
+                        torch.addmm(acc, a, b, out_dtype=torch.float32, out=acc)
+                    else:
+                        acc.addmm_(a.float(), b.float())
+                except Exception as exc:
+                    if "gemm input type" in str(exc) or "compute capability" in str(exc):
+                        acc.addmm_(a.float(), b.float())
+                    else:
+                        raise
+            clp._addmm_fp32 = _safe_addmm
+            log("Patched clp._addmm_fp32 with robust float fallback")
+    except Exception as exc:
+        log(f"TRL kernel patch notice: {exc}")
 
 
 def fresh_lora_config():
