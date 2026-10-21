@@ -3244,7 +3244,6 @@ def train_sft(model_id: str, tokenizer, dataset) -> str:
 
         sft_kwargs = dict(
             output_dir=SFT_STAGE_DIR, overwrite_output_dir=False,
-            assistant_only_loss=True,
             eval_steps=10, load_best_model_at_end=bool(eval_dataset),
             num_train_epochs=1, per_device_train_batch_size=1,
             gradient_accumulation_steps=8, learning_rate=2e-4,
