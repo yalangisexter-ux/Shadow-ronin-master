@@ -1,0 +1,13 @@
+{
+  "id": "replace-at-deploy/lone-wolf-howler-retrain",
+  "title": "Lone-Wolf-Howler Guarded Retraining",
+  "code_file": "Lone-Wolf-Howler-Retrain.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": [],
+  "model_sources": []
+}
