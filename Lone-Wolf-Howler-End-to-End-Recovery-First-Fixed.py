@@ -142,16 +142,21 @@ THINK_OPEN, THINK_CLOSE = "<think>", "</think>"
 ANSWER_OPEN, ANSWER_CLOSE = "<answer>", "</answer>"
 
 SYSTEM_PROMPT = (
-    "You are a natural, helpful, and empathetic AI assistant. "
-    f"First think through the problem step by step inside {THINK_OPEN}{THINK_CLOSE} tags, "
-    f"then give your final answer inside {ANSWER_OPEN}{ANSWER_CLOSE} tags."
+    "You are Lone-Wolf-Howler, a capable, natural conversational assistant. "
+    "Follow the user's requested role, character, tone, and scenario when safe and relevant. "
+    "Maintain continuity with established characters, facts, goals, and prior dialogue. "
+    "Answer the actual question directly; be specific, coherent, and appropriately detailed. "
+    "For factual or technical questions, distinguish verified facts from uncertainty and never invent sources. "
+    "Use retrieved context when it is relevant, prioritize it over guesses, and say when it does not answer the question. "
+    "Do not reveal private chain-of-thought or fabricate hidden reasoning. "
+    f"Wrap the user-facing final response in {ANSWER_OPEN} and {ANSWER_CLOSE} tags."
 )
 
 QUANT_TARGETS = ["Q8_0", "Q6_K", "Q5_K_M", "Q5_K_S", "Q4_K_M", "Q4_0", "Q3_K_M", "Q2_K", "IQ4_XS"]
 
 GRPO_MAX_EXAMPLES = 48
 GRPO_NUM_GENERATIONS = 2
-GRPO_MAX_COMPLETION_LENGTH = 64
+GRPO_MAX_COMPLETION_LENGTH = 256
 GRPO_MAX_PROMPT_LENGTH = 320
 GRPO_MAX_STEPS = 12
 GRPO_BATCH_SIZE = 2
@@ -2318,13 +2323,21 @@ def _extract_final_answer(text: str) -> str:
 
 
 def _wrap_answer_with_reasoning(answer: str, reasoning: str) -> str:
+    # Do not train the model to expose chain-of-thought. Keep only the
+    # user-facing answer and normalize the expected output wrapper.
     answer = answer.strip()
-    reasoning = reasoning.strip()
     if _REASONING_PATTERN.search(answer):
-        return answer
-    if reasoning:
-        return (f"{THINK_OPEN}\n{reasoning}\n{THINK_CLOSE}\n"
-                f"{ANSWER_OPEN}\n{answer}\n{ANSWER_CLOSE}")
+        answer = _extract_final_answer(answer)
+    else:
+        answer = re.sub(
+            rf"{re.escape(THINK_OPEN)}.*?{re.escape(THINK_CLOSE)}",
+            "", answer, flags=re.DOTALL,
+        ).strip()
+        answer = re.sub(
+            rf"{re.escape(ANSWER_OPEN)}(.*?)"
+            rf"{re.escape(ANSWER_CLOSE)}",
+            r"\1", answer, flags=re.DOTALL,
+        ).strip()
     return f"{ANSWER_OPEN}\n{answer}\n{ANSWER_CLOSE}"
 
 
@@ -2488,7 +2501,7 @@ def get_or_create_dataset(tokenizer, normalized_files: List[str]):
     combined_path, combined_meta = combine_normalized_jsonl_files(normalized_files)
     cache_meta=os.path.join(PERMANENT_DATASET_DIR,"dataset_cache_meta.json")
     cache_path=os.path.join(PERMANENT_DATASET_DIR,"train_cache.jsonl")
-    expected={"version":2,"model_id":MODEL_ID,"combined_sha256":combined_meta["sha256"],"total_records":combined_meta["total_records"]}
+    expected={"version":3,"model_id":MODEL_ID,"prompt_version":2,"combined_sha256":combined_meta["sha256"],"total_records":combined_meta["total_records"]}
     if os.path.exists(cache_meta) and os.path.exists(cache_path):
         try:
             if json.loads(Path(cache_meta).read_text(encoding="utf-8"))==expected:
@@ -2831,9 +2844,11 @@ class PersistentRAG:
 
     def smoke_test(self, queries=None) -> None:
         count = self.conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        embeddings = self.conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0]
         if count == 0:
-            log("RAG smoke test: EMPTY index.")
-            return
+            raise RuntimeError("RAG index is empty; no documents were indexed.")
+        if embeddings == 0:
+            raise RuntimeError("RAG index has documents but no embeddings.")
         if queries is None:
             queries = ["CIS security configuration", "DISA STIG remediation",
                        "BigFix relevance compliance check"]
@@ -2841,6 +2856,10 @@ class PersistentRAG:
         for q in queries:
             results = self.search(q, top_k=3)
             log(f"RAG query='{q}' -> {len(results)} result(s)")
+            if not results:
+                raise RuntimeError(f"RAG retrieval returned no results for smoke query: {q!r}")
+            if not any(str(item.get("content", "")).strip() for item in results):
+                raise RuntimeError(f"RAG returned empty content for smoke query: {q!r}")
 
     def close(self) -> None:
         try:
@@ -3230,10 +3249,10 @@ def _train_grpo_once(model_id, tokenizer, grpo_dataset, sft_dir):
             return scores
 
         def format_reward_func(completions=None, **kw):
+            # Reward the user-facing answer wrapper only; hidden reasoning tags
+            # are neither required nor encouraged.
             return [
-                0.25 if THINK_OPEN in _completion_to_text(c)
-                and THINK_CLOSE in _completion_to_text(c)
-                and ANSWER_OPEN in _completion_to_text(c)
+                0.25 if ANSWER_OPEN in _completion_to_text(c)
                 and ANSWER_CLOSE in _completion_to_text(c)
                 else 0.0
                 for c in (completions or [])
@@ -3628,8 +3647,11 @@ def run_scratch_mode(start_time: float, bnb_preflight_done: bool = False) -> int
             rag.smoke_test()
             _set_master_stage("RAG", "DONE", db_path=RAG_DB_PATH)
         except Exception as exc:
-            _compat_warn(f"RAG setup failed (non-fatal): {exc}")
-            _set_master_stage("RAG", "FAILED", error=str(exc))
+            _set_master_stage("RAG", "FAILED", error=f"{type(exc).__name__}: {exc}")
+            raise RuntimeError(
+                "RAG was enabled but index creation/validation failed. "
+                "Set DISABLE_RAG=1 only if intentionally running without RAG."
+            ) from exc
 
     dataset = get_or_create_dataset(tok, normalized)
     sft_dir = train_sft(MODEL_ID, tok, dataset)
