@@ -21,18 +21,18 @@ SYSTEM_PROMPT = (
 
 def clean_user_output(text: str) -> str:
     value = (text or "").strip()
-    value = re.sub(r"<\|(?:im_start|im_end|im_sep|endoftext|fim_suffix|fim_prefix|fim_middle)\|>", " ", value)
-    value = re.sub(r"<\s*/?\s*(?:think|answer)\s*>", "", value, flags=re.I)
-    value = re.sub(r"(?im)^[ \t]*(?:system|user|assistant)[ \t]*:[ \t]*", "", value)
-    value = re.sub(r"(?im)^[ \t]*(?:system|user|assistant)[ \t]*\n", "", value)
-    # Trim a leaked transcript or JSONL record if one begins after the answer.
+    # Trim raw chat-template transcript tails before removing their markers.
     cuts = []
-    for marker in ('\n{"messages"', '\n<|im_start|>user', '\n### User:', '\n### Assistant:'):
+    for marker in ('\n{"messages"', '\n<|im_start|>user', '\n<|im_start|>assistant', '\n### User:', '\n### Assistant:'):
         pos = value.find(marker)
         if pos > 0:
             cuts.append(pos)
     if cuts:
         value = value[:min(cuts)]
+    value = re.sub(r"<\|(?:im_start|im_end|im_sep|endoftext|fim_suffix|fim_prefix|fim_middle)\|>", " ", value)
+    value = re.sub(r"<\s*/?\s*(?:think|answer)\s*>", "", value, flags=re.I)
+    value = re.sub(r"(?im)^[ \t]*(?:system|user|assistant)[ \t]*:[ \t]*", "", value)
+    value = re.sub(r"(?im)^[ \t]*(?:system|user|assistant)[ \t]*\n", "", value)
     value = re.sub(r"\n{3,}", "\n\n", value).strip()
     lowered = value.casefold()
     if any(token in lowered for token in (
