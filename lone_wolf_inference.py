@@ -23,7 +23,8 @@ def clean_user_output(text: str) -> str:
     value = (text or "").strip()
     value = re.sub(r"<\|(?:im_start|im_end|im_sep|endoftext|fim_suffix|fim_prefix|fim_middle)\|>", " ", value)
     value = re.sub(r"<\s*/?\s*(?:think|answer)\s*>", "", value, flags=re.I)
-    value = re.sub(r"(?im)^\s*(?:system|user|assistant)\s*:\s*", "", value)
+    value = re.sub(r"(?im)^[ \t]*(?:system|user|assistant)[ \t]*:[ \t]*", "", value)
+    value = re.sub(r"(?im)^[ \t]*(?:system|user|assistant)[ \t]*\n", "", value)
     # Trim a leaked transcript or JSONL record if one begins after the answer.
     cuts = []
     for marker in ('\n{"messages"', '\n<|im_start|>user', '\n### User:', '\n### Assistant:'):
