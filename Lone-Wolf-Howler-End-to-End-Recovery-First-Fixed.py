@@ -2386,6 +2386,67 @@ def build_training_example(tokenizer, query: str, answer: str) -> str:
     ])
 
 
+def clean_generated_answer(text: str, user_query: str = "") -> str:
+    """Convert raw model tokens into a user-facing answer, not a prompt/data dump."""
+    if not text:
+        return ""
+    answer = text.strip()
+
+    # Prefer the explicit answer wrapper if the model emitted one.
+    answer = _extract_final_answer(answer)
+    answer = re.sub(r"<\\|im_(?:start|end|sep)\\|>", " ", answer)
+    answer = re.sub(r"<\\|(?:endoftext|fim_suffix|fim_prefix|fim_middle)\\|>", " ", answer)
+    answer = re.sub(r"<\\s*(?:think|answer)\\s*>", " ", answer, flags=re.IGNORECASE)
+    answer = re.sub(r"<\\s*/\\s*(?:think|answer)\\s*>", " ", answer, flags=re.IGNORECASE)
+    answer = re.sub(r"(?im)^\\s*(?:system|user|assistant)\\s*:\\s*", "", answer)
+    answer = re.sub(r"\\n{3,}", "\\n\\n", answer).strip()
+
+    # If a chat transcript or serialized training record leaked into the
+    # completion, keep only the first user-facing section.
+    markers = [
+        "\\n{"messages"", "\\n{\\"messages\\"",
+        "\\n<|im_start|>user", "\\n<|im_start|>assistant",
+        "\\n### User:", "\\n### Assistant:",
+    ]
+    positions = [answer.find(marker.replace("\\\\n", "\\n")) for marker in markers]
+    positions = [p for p in positions if p > 0]
+    if positions:
+        answer = answer[:min(positions)].strip()
+
+    if user_query:
+        q = user_query.strip()
+        if len(q) >= 12 and answer[:len(q)].casefold() == q.casefold():
+            answer = answer[len(q):].lstrip(" :\\n-")
+
+    return answer.strip()
+
+
+def generate_user_answer(model, tokenizer, query: str, context: Optional[str] = None,
+                         max_new_tokens: int = 256) -> str:
+    """Shared inference path that returns only the newly generated, cleaned answer."""
+    import torch
+    prompt = build_prompt(tokenizer, query, context=context)
+    inputs = tokenizer(prompt, return_tensors="pt")
+    device = next(model.parameters()).device
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+    with torch.no_grad():
+        output = model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            do_sample=False,
+            repetition_penalty=1.08,
+            no_repeat_ngram_size=4,
+            pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+        )
+    new_tokens = output[0, inputs["input_ids"].shape[-1]:]
+    raw = tokenizer.decode(new_tokens, skip_special_tokens=True)
+    answer = clean_generated_answer(raw, user_query=query)
+    if not answer:
+        raise RuntimeError("Model produced no usable user-facing answer after output cleanup.")
+    return answer
+
+
 def standardize_to_chat(example: Dict[str, Any], tokenizer) -> Optional[Dict[str, Any]]:
     query, answer = extract_query_answer(example)
     query, answer = query.strip(), answer.strip()
@@ -3461,16 +3522,7 @@ def smoke_test_hf_model(model_dir: str,
         if not retrieved or not context.strip():
             raise RuntimeError("RAG-enabled smoke test could not retrieve usable context.")
         log(f"RAG-grounded FP16 smoke test: {len(retrieved)} retrieved chunk(s)")
-    prompt = build_prompt(tok, query, context=context)
-    inputs = tok(prompt, return_tensors="pt")
-    if torch.cuda.is_available():
-        inputs = {k: v.to(model.device) for k, v in inputs.items()}
-    with torch.no_grad():
-        out = model.generate(**inputs, max_new_tokens=48, do_sample=False,
-                             pad_token_id=tok.pad_token_id,
-                             eos_token_id=tok.eos_token_id)
-    gen = tok.decode(out[0][inputs["input_ids"].shape[-1]:],
-                     skip_special_tokens=True).strip()
+    gen = generate_user_answer(model, tok, query, context=context, max_new_tokens=128)
     if not gen:
         raise RuntimeError("FP16/HF smoke test empty.")
     log("FP16/HF smoke test: PASS")
