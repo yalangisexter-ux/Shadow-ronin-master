@@ -22,6 +22,10 @@ class OutputCleaningTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.clean_user_output('{"messages": [{"role": "assistant", "content": "leak"}]}')
 
+    def test_cyber_jsonl_dump_suppressed(self):
+        with self.assertRaises(ValueError):
+            module.clean_user_output('{"id": 3, "category": "Web", "tool": "scanner", "code": "x", "attack": "probe", "rescue": "patch"}')
+
     def test_empty_answer_is_empty(self):
         self.assertEqual(module.clean_user_output("  "), "")
 
