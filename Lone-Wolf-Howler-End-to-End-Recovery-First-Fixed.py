@@ -3436,6 +3436,11 @@ def merge_to_fp16(base_model_id: str, adapter_dir: str, output_dir: str):
 def smoke_test_hf_model(model_dir: str,
                         query: str = "Explain a secure configuration check.",
                         rag=None) -> str:
+    if not DISABLE_RAG and rag is None:
+        raise RuntimeError(
+            "RAG is enabled but no usable index was initialized; refusing to publish "
+            "a model that has not passed retrieval-grounded validation."
+        )
     import torch
     from transformers import AutoTokenizer, AutoModelForCausalLM
     log("Running FP16/HF smoke test BEFORE GGUF conversion.")
@@ -3711,11 +3716,8 @@ def run_scratch_mode(start_time: float, bnb_preflight_done: bool = False) -> int
             rag.smoke_test()
             _set_master_stage("RAG", "DONE", db_path=RAG_DB_PATH)
         except Exception as exc:
+            _compat_warn(f"RAG setup failed; training will continue but release validation will fail: {exc}")
             _set_master_stage("RAG", "FAILED", error=f"{type(exc).__name__}: {exc}")
-            raise RuntimeError(
-                "RAG was enabled but index creation/validation failed. "
-                "Set DISABLE_RAG=1 only if intentionally running without RAG."
-            ) from exc
 
     dataset = get_or_create_dataset(tok, normalized)
     sft_dir = train_sft(MODEL_ID, tok, dataset)
