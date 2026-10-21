@@ -3377,7 +3377,8 @@ def merge_to_fp16(base_model_id: str, adapter_dir: str, output_dir: str):
     return output_dir
 
 def smoke_test_hf_model(model_dir: str,
-                        query: str = "Explain a secure configuration check.") -> str:
+                        query: str = "Explain a secure configuration check.",
+                        rag=None) -> str:
     import torch
     from transformers import AutoTokenizer, AutoModelForCausalLM
     log("Running FP16/HF smoke test BEFORE GGUF conversion.")
@@ -3392,7 +3393,13 @@ def smoke_test_hf_model(model_dir: str,
         model = AutoModelForCausalLM.from_pretrained(
             model_dir, torch_dtype=torch.float32, device_map=None,
             trust_remote_code=True)
-    prompt = build_prompt(tok, query)
+    context = None
+    if rag is not None:
+        context, retrieved = rag.build_context(query, top_k=RAG_TOP_K)
+        if not retrieved or not context.strip():
+            raise RuntimeError("RAG-enabled smoke test could not retrieve usable context.")
+        log(f"RAG-grounded FP16 smoke test: {len(retrieved)} retrieved chunk(s)")
+    prompt = build_prompt(tok, query, context=context)
     inputs = tok(prompt, return_tensors="pt")
     if torch.cuda.is_available():
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
@@ -3661,7 +3668,7 @@ def run_scratch_mode(start_time: float, bnb_preflight_done: bool = False) -> int
 
     adapter = find_adapter_dir(grpo_dir)
     fp16_dir = merge_to_fp16(MODEL_ID, adapter, PERMANENT_EXPORT_DIR)
-    smoke_test_hf_model(fp16_dir)
+    smoke_test_hf_model(fp16_dir, rag=rag)
 
     if not _stage_is_done("FP16_PUBLISHED"):
         _publish_fp16_only(fp16_dir)
