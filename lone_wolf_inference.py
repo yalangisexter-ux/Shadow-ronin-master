@@ -34,8 +34,29 @@ def clean_user_output(text: str) -> str:
         value = value[:min(cuts)]
     value = re.sub(r"\n{3,}", "\n\n", value).strip()
     lowered = value.casefold()
-    if any(token in lowered for token in ('"messages":', '"role": "assistant"', 'system_prompt =')):
+    if any(token in lowered for token in (
+        '"messages":', '"role": "assistant"', '"role":"assistant"',
+        'system_prompt =', '<|im_start|>', '<|im_end|>',
+    )):
         raise ValueError("Model returned raw prompt or training-record content; response suppressed.")
+
+    # Catch single JSONL records and line-by-line dumps even when the model
+    # emits a different schema from the primary messages dataset.
+    for line in value.splitlines():
+        candidate = line.strip()
+        if not candidate.startswith("{"):
+            continue
+        try:
+            import json
+            record = json.loads(candidate)
+        except Exception:
+            continue
+        if isinstance(record, dict) and (
+            "messages" in record
+            or {"attack", "rescue"}.issubset(record)
+            or {"id", "category", "tool", "code"}.issubset(record)
+        ):
+            raise ValueError("Model returned serialized dataset content; response suppressed.")
     if value.startswith("{") and value.endswith("}") and ('"content"' in lowered or '"messages"' in lowered):
         raise ValueError("Model returned serialized data rather than a chat answer; response suppressed.")
     return value
