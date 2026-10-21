@@ -2385,6 +2385,25 @@ def clean_generated_answer(text: str, user_query: str = "") -> str:
     return answer.strip()
 
 
+def assert_user_facing_output(text: str, query: str = "") -> None:
+    """Fail smoke tests if generation looks like raw training data or a transcript."""
+    value = (text or "").strip()
+    if len(value) < 3:
+        raise RuntimeError("Generated response is empty or too short.")
+    lowered = value.casefold()
+    forbidden = (
+        '"messages":', '"role": "assistant"', '{"id":', '<|im_start|>',
+        '<|im_end|>', 'system_prompt =', 'training examples:',
+    )
+    if any(token in lowered for token in forbidden):
+        raise RuntimeError("Generated response contains raw training-record or prompt markers.")
+    if query and len(query.strip()) >= 18 and lowered.startswith(query.strip().casefold()):
+        raise RuntimeError("Generated response appears to repeat the full user prompt.")
+    # Avoid treating a long serialized object as a normal natural-language answer.
+    if value.startswith("{") and value.endswith("}") and ('"content"' in lowered or '"messages"' in lowered):
+        raise RuntimeError("Generated response appears to be serialized dataset content.")
+
+
 def generate_user_answer(model, tokenizer, query: str, context: Optional[str] = None,
                          max_new_tokens: int = 256) -> str:
     """Shared inference path that returns only the newly generated, cleaned answer."""
@@ -2436,7 +2455,11 @@ def standardize_to_chat(example: Dict[str, Any], tokenizer) -> Dict[str, Any]:
 
 
 def locate_data_files(required: bool = True) -> List[str]:
-    roots = [SPECIFIC_KAGGLE_DATASET_PATH, "/kaggle/input", DOWNLOADED_DATA_DIR]
+    # Prefer an explicit allowlisted training-data directory. This prevents a
+    # Kaggle notebook from accidentally mixing unrelated attached datasets.
+    explicit_root = os.environ.get("TRAINING_DATA_DIR", "").strip()
+    roots = ([explicit_root] if explicit_root else
+             [SPECIFIC_KAGGLE_DATASET_PATH, "/kaggle/input", DOWNLOADED_DATA_DIR])
     found, seen = [], set()
     for root in roots:
         if not os.path.exists(root):
@@ -2545,7 +2568,7 @@ def get_or_create_dataset(tokenizer, normalized_files: List[str]):
     combined_path, combined_meta = combine_normalized_jsonl_files(normalized_files)
     cache_meta=os.path.join(PERMANENT_DATASET_DIR,"dataset_cache_meta.json")
     cache_path=os.path.join(PERMANENT_DATASET_DIR,"train_cache.jsonl")
-    expected={"version":2,"model_id":MODEL_ID,"combined_sha256":combined_meta["sha256"],"total_records":combined_meta["total_records"]}
+    expected={"version":5,"model_id":MODEL_ID,"prompt_version":4,"combined_sha256":combined_meta["sha256"],"total_records":combined_meta["total_records"]}
     if os.path.exists(cache_meta) and os.path.exists(cache_path):
         try:
             if json.loads(Path(cache_meta).read_text(encoding="utf-8"))==expected:
@@ -3433,6 +3456,7 @@ def smoke_test_hf_model(model_dir: str,
     gen = generate_user_answer(model, tok, query, context=None, max_new_tokens=128)
     if not gen:
         raise RuntimeError("FP16/HF smoke test empty.")
+    assert_user_facing_output(gen, query=query)
     log("FP16/HF smoke test: PASS")
     log(f"FP16 sample output: {gen[:500]}")
     del model
