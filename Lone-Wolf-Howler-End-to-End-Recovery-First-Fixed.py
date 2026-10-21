@@ -1470,15 +1470,12 @@ def _publish_gguf_hf(path: str) -> None:
     api = HfApi(token=token)
     api.create_repo(repo_id=HF_REPO_ID, repo_type="model", exist_ok=True)
     fname = os.path.basename(path)
-    log(f"[HF] uploading gguf/{fname}")
+    log(f"[HF] uploading gguf/{fname} one-by-one with retry...")
     remote_path = f"gguf/{fname}"
-    api.upload_file(path_or_fileobj=path, path_in_repo=remote_path,
-                    repo_id=HF_REPO_ID, repo_type="model")
+    _hf_upload_file(api, path, remote_path)
     # Keep the canonical F16 GGUF under fp16_model/gguf_output as well.
     if fname == "lone-wolf-howler-f16.gguf":
-        api.upload_file(path_or_fileobj=path,
-                        path_in_repo=f"fp16_model/gguf_output/{fname}",
-                        repo_id=HF_REPO_ID, repo_type="model")
+        _hf_upload_file(api, path, f"fp16_model/gguf_output/{fname}")
     # Verify remote metadata when the Hub API exposes file sizes.
     try:
         info = api.repo_info(repo_id=HF_REPO_ID, repo_type="model", files_metadata=True)
