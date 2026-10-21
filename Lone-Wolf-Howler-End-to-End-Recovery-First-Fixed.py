@@ -3126,6 +3126,18 @@ def train_sft(model_id: str, tokenizer, dataset) -> str:
     os.makedirs(SFT_STAGE_DIR, exist_ok=True)
     resume_checkpoint = _find_resume_checkpoint(SFT_STAGE_DIR)
 
+    # Hold out a deterministic validation split so training quality is measured
+    # on unseen examples rather than inferred from training loss alone.
+    eval_dataset = None
+    train_dataset = dataset
+    if len(dataset) >= 20:
+        split = dataset.train_test_split(test_size=0.05, seed=42)
+        train_dataset = split["train"]
+        eval_dataset = split["test"]
+        log(f"SFT split: train={len(train_dataset)} validation={len(eval_dataset)}")
+    else:
+        log(f"SFT validation split skipped: only {len(dataset)} examples.")
+
     class _CB(TrainerCallback):
         def on_train_begin(self, args, state, control, **kw):
             log(f"SFT TRAINING STARTED: step={state.global_step} total={state.max_steps}")
@@ -3152,6 +3164,7 @@ def train_sft(model_id: str, tokenizer, dataset) -> str:
         sft_kwargs = dict(
             output_dir=SFT_STAGE_DIR, overwrite_output_dir=False,
             assistant_only_loss=True,
+            eval_steps=50, load_best_model_at_end=bool(eval_dataset),
             num_train_epochs=1, per_device_train_batch_size=1,
             gradient_accumulation_steps=8, learning_rate=2e-4,
             logging_strategy="steps", logging_steps=1, logging_first_step=True,
@@ -3166,11 +3179,14 @@ def train_sft(model_id: str, tokenizer, dataset) -> str:
             dataset_text_field="text", loss_type="nll",
             dataloader_num_workers=0, group_by_length=False,
             dataset_num_proc=1, max_steps=SFT_MAX_STEPS, seed=42)
-        sft_config = _build_sft_config(SFTConfig, sft_kwargs)
+        sft_parameters = inspect.signature(SFTConfig.__init__).parameters
+        eval_key = "eval_strategy" if "eval_strategy" in sft_parameters else "evaluation_strategy"
+        sft_kwargs[eval_key] = "steps" if eval_dataset is not None else "no"
+        trainer_kwargs_config = _build_sft_config(SFTConfig, sft_kwargs)
 
-        trainer_kwargs = dict(model=model, args=sft_config,
-                              train_dataset=dataset, peft_config=fresh_lora_config(),
-                              callbacks=[_CB()])
+        trainer_kwargs = dict(model=model, args=trainer_kwargs_config,
+                              train_dataset=train_dataset, eval_dataset=eval_dataset,
+                              peft_config=fresh_lora_config(), callbacks=[_CB()])
         trainer_kwargs.update(_tokenizer_kwarg(SFTTrainer, tokenizer))
         trainer = SFTTrainer(**_filter_kwargs(SFTTrainer, trainer_kwargs))
 
