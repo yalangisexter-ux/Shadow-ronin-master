@@ -2394,21 +2394,20 @@ def clean_generated_answer(text: str, user_query: str = "") -> str:
 
     # Prefer the explicit answer wrapper if the model emitted one.
     answer = _extract_final_answer(answer)
-    answer = re.sub(r"<\\|im_(?:start|end|sep)\\|>", " ", answer)
-    answer = re.sub(r"<\\|(?:endoftext|fim_suffix|fim_prefix|fim_middle)\\|>", " ", answer)
-    answer = re.sub(r"<\\s*(?:think|answer)\\s*>", " ", answer, flags=re.IGNORECASE)
-    answer = re.sub(r"<\\s*/\\s*(?:think|answer)\\s*>", " ", answer, flags=re.IGNORECASE)
-    answer = re.sub(r"(?im)^\\s*(?:system|user|assistant)\\s*:\\s*", "", answer)
-    answer = re.sub(r"\\n{3,}", "\\n\\n", answer).strip()
+    answer = re.sub(r"<\|im_(?:start|end|sep)\|>", " ", answer)
+    answer = re.sub(r"<\|(?:endoftext|fim_suffix|fim_prefix|fim_middle)\|>", " ", answer)
+    answer = re.sub(r"<\s*(?:think|answer)\s*>", " ", answer, flags=re.IGNORECASE)
+    answer = re.sub(r"<\s*/\s*(?:think|answer)\s*>", " ", answer, flags=re.IGNORECASE)
+    answer = re.sub(r"(?im)^\s*(?:system|user|assistant)\s*:\s*", "", answer)
+    answer = re.sub(r"\n{3,}", "\n\n", answer).strip()
 
     # If a chat transcript or serialized training record leaked into the
     # completion, keep only the first user-facing section.
     markers = [
-        "\\n{"messages"", "\\n{\\"messages\\"",
-        "\\n<|im_start|>user", "\\n<|im_start|>assistant",
-        "\\n### User:", "\\n### Assistant:",
+        '\n{"messages"', '\n<|im_start|>user', '\n<|im_start|>assistant',
+        '\n### User:', '\n### Assistant:',
     ]
-    positions = [answer.find(marker.replace("\\\\n", "\\n")) for marker in markers]
+    positions = [answer.find(marker) for marker in markers]
     positions = [p for p in positions if p > 0]
     if positions:
         answer = answer[:min(positions)].strip()
@@ -2416,7 +2415,7 @@ def clean_generated_answer(text: str, user_query: str = "") -> str:
     if user_query:
         q = user_query.strip()
         if len(q) >= 12 and answer[:len(q)].casefold() == q.casefold():
-            answer = answer[len(q):].lstrip(" :\\n-")
+            answer = answer[len(q):].lstrip(" :\n-")
 
     return answer.strip()
 
