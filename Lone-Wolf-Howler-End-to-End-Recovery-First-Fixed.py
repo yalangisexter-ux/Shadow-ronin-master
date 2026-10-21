@@ -3130,7 +3130,7 @@ def train_sft(model_id: str, tokenizer, dataset) -> str:
     # on unseen examples rather than inferred from training loss alone.
     eval_dataset = None
     train_dataset = dataset
-    if len(dataset) >= 20:
+    if len(dataset) >= 100:
         split = dataset.train_test_split(test_size=0.05, seed=42)
         train_dataset = split["train"]
         eval_dataset = split["test"]
@@ -3164,11 +3164,11 @@ def train_sft(model_id: str, tokenizer, dataset) -> str:
         sft_kwargs = dict(
             output_dir=SFT_STAGE_DIR, overwrite_output_dir=False,
             assistant_only_loss=True,
-            eval_steps=50, load_best_model_at_end=bool(eval_dataset),
+            eval_steps=10, save_steps=10, load_best_model_at_end=bool(eval_dataset),
             num_train_epochs=1, per_device_train_batch_size=1,
             gradient_accumulation_steps=8, learning_rate=2e-4,
             logging_strategy="steps", logging_steps=1, logging_first_step=True,
-            save_strategy="steps", save_steps=50, save_total_limit=3,
+            save_strategy="steps", save_steps=10, save_total_limit=3,
             report_to="none", disable_tqdm=False,
             fp16=bool(torch.cuda.is_available() and not torch.cuda.is_bf16_supported()),
             bf16=bool(torch.cuda.is_available() and torch.cuda.is_bf16_supported()),
