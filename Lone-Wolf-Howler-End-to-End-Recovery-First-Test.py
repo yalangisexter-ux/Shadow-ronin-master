@@ -3860,5 +3860,6 @@ def _safe_main() -> int:
 
 if __name__ == "__main__":
     _code = _safe_main()
-    # No sys.exit() — prevents IPython's internal error cascade.
-    print(f"[Shadow-Ronin] exit_code={_code}", flush=True)
+    print(f"[pipeline] exit_code={_code}", flush=True)
+    if _code != 0:
+        sys.exit(_code)
