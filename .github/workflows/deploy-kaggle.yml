@@ -2,6 +2,12 @@ name: Deploy Lone-Wolf-Howler to Kaggle
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "kaggle/lone-wolf-howler-retrain/**"
+      - "Lone-Wolf-Howler-End-to-End-Recovery-First-Fixed.py"
+      - "lone_wolf_inference.py"
+      - ".github/workflows/deploy-kaggle.yml"
 
 permissions:
   contents: read
