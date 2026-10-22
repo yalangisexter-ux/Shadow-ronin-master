@@ -240,9 +240,17 @@ def run_cmd(
     timeout: Optional[float] = None,
 ) -> subprocess.CompletedProcess:
     log("$ " + " ".join(str(x) for x in cmd))
+    cmd_env = (env if env is not None else os.environ).copy()
+    if cmd:
+        exe_path = str(cmd[0])
+        bin_dir = os.path.dirname(os.path.abspath(exe_path)) if ("/" in exe_path or "\\" in exe_path) else ""
+        if bin_dir and os.path.isdir(bin_dir):
+            cur_ld = cmd_env.get("LD_LIBRARY_PATH", "")
+            if bin_dir not in cur_ld:
+                cmd_env["LD_LIBRARY_PATH"] = bin_dir + (":" + cur_ld if cur_ld else "")
     return subprocess.run(
         cmd, cwd=cwd, check=check, text=True,
-        capture_output=capture, env=env, timeout=timeout,
+        capture_output=capture, env=cmd_env, timeout=timeout,
     )
 
 
@@ -1039,9 +1047,15 @@ def _detect_cuda_toolkit() -> Dict[str, Any]:
 def _llama_cli_cuda_devices(cli: str) -> Tuple[bool, str]:
     """Verify that this llama-cli binary can enumerate CUDA devices."""
     try:
+        cmd_env = os.environ.copy()
+        bin_dir = os.path.dirname(os.path.abspath(cli))
+        if bin_dir and os.path.isdir(bin_dir):
+            cur_ld = cmd_env.get("LD_LIBRARY_PATH", "")
+            if bin_dir not in cur_ld:
+                cmd_env["LD_LIBRARY_PATH"] = bin_dir + (":" + cur_ld if cur_ld else "")
         r = subprocess.run(
             [cli, "--list-devices"], check=False, text=True,
-            capture_output=True, timeout=30,
+            capture_output=True, timeout=30, env=cmd_env,
         )
         text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
         low = text.lower()
@@ -1126,7 +1140,7 @@ def _prune_llama_build_objects(build_dir: str) -> None:
 def _download_and_extract_llama_release(target_dir: str, cuda: bool = True) -> bool:
     """Download precompiled llama.cpp release binaries directly to avoid expensive compilation hangs."""
     import urllib.request
-    import io, tarfile, shutil
+    import io, tarfile, shutil, tempfile
     tag = "b11804"
     tar_name = f"llama-{tag}-bin-ubuntu-cuda-12.8-x64.tar.gz" if cuda else f"llama-{tag}-bin-ubuntu-x64.tar.gz"
     url = f"https://github.com/ggml-org/llama.cpp/releases/download/{tag}/{tar_name}"
@@ -1135,26 +1149,52 @@ def _download_and_extract_llama_release(target_dir: str, cuda: bool = True) -> b
         req = urllib.request.Request(url, headers={"User-Agent": "LoneWolfHowler/1.0"})
         with urllib.request.urlopen(req, timeout=90) as resp:
             data = resp.read()
-        import io, tarfile
+        tmp_dir = tempfile.mkdtemp()
         with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
-            members = tar.getmembers()
-            os.makedirs(target_dir, exist_ok=True)
-            for m in members:
-                parts = Path(m.name).parts
-                rel_name = os.path.join(*parts[1:]) if len(parts) > 1 else parts[0]
-                dest_path = os.path.join(target_dir, rel_name)
-                if m.isdir():
-                    os.makedirs(dest_path, exist_ok=True)
-                elif m.isfile():
-                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                    with tar.extractfile(m) as src, open(dest_path, "wb") as dst:
-                        shutil.copyfileobj(src, dst)
-                    if any(b in os.path.basename(dest_path) for b in ("llama-cli", "llama-quantize", "quantize", "llama")):
-                        try:
-                            os.chmod(dest_path, 0o755)
-                        except Exception:
-                            pass
-        log(f"[llama.cpp] successfully extracted {len(members)} files to {target_dir}")
+            tar.extractall(tmp_dir)
+        subdirs = [os.path.join(tmp_dir, d) for d in os.listdir(tmp_dir) if os.path.isdir(os.path.join(tmp_dir, d))]
+        source_dir = subdirs[0] if subdirs else tmp_dir
+        os.makedirs(target_dir, exist_ok=True)
+        for item in os.listdir(source_dir):
+            s = os.path.join(source_dir, item)
+            d = os.path.join(target_dir, item)
+            if os.path.isdir(s):
+                if os.path.exists(d):
+                    shutil.rmtree(d, ignore_errors=True)
+                shutil.copytree(s, d)
+            else:
+                if os.path.islink(s):
+                    real_src = os.path.realpath(s)
+                    if os.path.isfile(real_src):
+                        if os.path.lexists(d):
+                            os.remove(d)
+                        shutil.copy2(real_src, d)
+                else:
+                    if os.path.lexists(d):
+                        os.remove(d)
+                    shutil.copy2(s, d)
+                if any(b in os.path.basename(d) for b in ("llama-cli", "llama-quantize", "quantize", "llama")):
+                    try:
+                        os.chmod(d, 0o755)
+                    except Exception:
+                        pass
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        # Ensure target_dir is in LD_LIBRARY_PATH
+        cur_ld = os.environ.get("LD_LIBRARY_PATH", "")
+        if target_dir not in cur_ld:
+            os.environ["LD_LIBRARY_PATH"] = target_dir + (":" + cur_ld if cur_ld else "")
+        # Copy .so libraries to system library dir if writable (root in Kaggle)
+        for sys_lib in ("/usr/local/lib", "/usr/lib"):
+            if os.path.isdir(sys_lib) and os.access(sys_lib, os.W_OK):
+                try:
+                    for f in os.listdir(target_dir):
+                        if ".so" in f:
+                            shutil.copy2(os.path.join(target_dir, f), os.path.join(sys_lib, f))
+                    subprocess.run(["ldconfig"], check=False)
+                    break
+                except Exception:
+                    pass
+        log(f"[llama.cpp] successfully extracted all files and shared libraries to {target_dir}")
         return True
     except Exception as exc:
         log(f"[llama.cpp] precompiled download failed ({url}): {exc}")

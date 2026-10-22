@@ -237,9 +237,17 @@ def run_cmd(
     timeout: Optional[float] = None,
 ) -> subprocess.CompletedProcess:
     log("$ " + " ".join(str(x) for x in cmd))
+    cmd_env = (env if env is not None else os.environ).copy()
+    if cmd:
+        exe_path = str(cmd[0])
+        bin_dir = os.path.dirname(os.path.abspath(exe_path)) if ("/" in exe_path or "\\" in exe_path) else ""
+        if bin_dir and os.path.isdir(bin_dir):
+            cur_ld = cmd_env.get("LD_LIBRARY_PATH", "")
+            if bin_dir not in cur_ld:
+                cmd_env["LD_LIBRARY_PATH"] = bin_dir + (":" + cur_ld if cur_ld else "")
     return subprocess.run(
         cmd, cwd=cwd, check=check, text=True,
-        capture_output=capture, env=env, timeout=timeout,
+        capture_output=capture, env=cmd_env, timeout=timeout,
     )
 
 
@@ -1036,9 +1044,15 @@ def _detect_cuda_toolkit() -> Dict[str, Any]:
 def _llama_cli_cuda_devices(cli: str) -> Tuple[bool, str]:
     """Verify that this llama-cli binary can enumerate CUDA devices."""
     try:
+        cmd_env = os.environ.copy()
+        bin_dir = os.path.dirname(os.path.abspath(cli))
+        if bin_dir and os.path.isdir(bin_dir):
+            cur_ld = cmd_env.get("LD_LIBRARY_PATH", "")
+            if bin_dir not in cur_ld:
+                cmd_env["LD_LIBRARY_PATH"] = bin_dir + (":" + cur_ld if cur_ld else "")
         r = subprocess.run(
             [cli, "--list-devices"], check=False, text=True,
-            capture_output=True, timeout=30,
+            capture_output=True, timeout=30, env=cmd_env,
         )
         text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
         low = text.lower()
