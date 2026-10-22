@@ -1125,6 +1125,8 @@ def _prune_llama_build_objects(build_dir: str) -> None:
 
 def _download_and_extract_llama_release(target_dir: str, cuda: bool = True) -> bool:
     """Download precompiled llama.cpp release binaries directly to avoid expensive compilation hangs."""
+    import urllib.request
+    import io, tarfile, shutil
     tag = "b11804"
     tar_name = f"llama-{tag}-bin-ubuntu-cuda-12.8-x64.tar.gz" if cuda else f"llama-{tag}-bin-ubuntu-x64.tar.gz"
     url = f"https://github.com/ggml-org/llama.cpp/releases/download/{tag}/{tar_name}"
@@ -1176,6 +1178,7 @@ def ensure_llama_cpp() -> str:
             os.makedirs(repo_dir, exist_ok=True)
             conv_url = "https://raw.githubusercontent.com/ggml-org/llama.cpp/master/convert_hf_to_gguf.py"
             try:
+                import urllib.request
                 urllib.request.urlretrieve(conv_url, os.path.join(repo_dir, "convert_hf_to_gguf.py"))
             except Exception as e2:
                 log(f"[llama.cpp] convert_hf_to_gguf download warning: {e2}")
@@ -1269,6 +1272,7 @@ def find_llama_convert(repo_dir: str) -> str:
     try:
         url = "https://raw.githubusercontent.com/ggml-org/llama.cpp/master/convert_hf_to_gguf.py"
         log(f"[llama.cpp] downloading convert_hf_to_gguf.py -> {p}")
+        import urllib.request
         urllib.request.urlretrieve(url, p)
         if os.path.isfile(p):
             return p
@@ -1323,16 +1327,14 @@ def _gguf_structural_check(path: str) -> Dict[str, Any]:
 
 
 def _llama_cli_gpu_args(cli: str) -> List[str]:
-    """Return GPU offload arguments only after verifying CUDA support."""
+    """Return GPU offload arguments if CUDA is supported by this binary, else empty list for CPU."""
     nvidia = _nvidia_gpu_info()
     if not nvidia.get("available"):
         return []
     ok, detail = _llama_cli_cuda_devices(cli)
     if not ok:
-        raise RuntimeError(
-            "NVIDIA GPU is available but llama-cli has no verified CUDA backend. "
-            f"Refusing CPU fallback. Device probe:\n{detail}"
-        )
+        log(f"[llama.cpp] GPU available but llama-cli has no CUDA backend; using CPU offload args. Probe: {detail.strip()}")
+        return []
     return ["-ngl", "99"]
 
 

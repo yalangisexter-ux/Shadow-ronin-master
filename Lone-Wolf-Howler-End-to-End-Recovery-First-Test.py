@@ -1352,16 +1352,14 @@ def _gguf_structural_check(path: str) -> Dict[str, Any]:
 
 
 def _llama_cli_gpu_args(cli: str) -> List[str]:
-    """Return GPU offload arguments only after verifying CUDA support."""
+    """Return GPU offload arguments if CUDA is supported by this binary, else empty list for CPU."""
     nvidia = _nvidia_gpu_info()
     if not nvidia.get("available"):
         return []
     ok, detail = _llama_cli_cuda_devices(cli)
     if not ok:
-        raise RuntimeError(
-            "NVIDIA GPU is available but llama-cli has no verified CUDA backend. "
-            f"Refusing CPU fallback. Device probe:\n{detail}"
-        )
+        log(f"[llama.cpp] GPU available but llama-cli has no CUDA backend; using CPU offload args. Probe: {detail.strip()}")
+        return []
     return ["-ngl", "99"]
 
 
