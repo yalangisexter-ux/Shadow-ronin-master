@@ -18,6 +18,45 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Sync source scripts to Hugging Face
+        shell: bash
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO: ${{ secrets.HF_REPO }}
+        run: |
+          test -n "$HF_TOKEN" || (echo "Missing repository secret HF_TOKEN" >&2; exit 1)
+          python -m pip install --quiet --upgrade "huggingface_hub>=0.30.0"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from huggingface_hub import HfApi, create_repo
+
+          token = os.environ["HF_TOKEN"]
+          repo_id = os.environ.get("HF_REPO", "").strip() or "aryansexter/Lone-Wolf-Howler"
+          api = HfApi(token=token)
+          create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, token=token)
+          files = {
+              "Lone-Wolf-Howler-End-to-End-Recovery-First-Fixed.py": "scripts/Lone-Wolf-Howler-End-to-End-Recovery-First-Fixed.py",
+              "Lone-Wolf-Howler-End-to-End-Recovery-First-Test.py": "scripts/Lone-Wolf-Howler-End-to-End-Recovery-First-Test.py",
+              "lone_wolf_inference.py": "scripts/lone_wolf_inference.py",
+              "tests/test_lone_wolf_inference.py": "scripts/tests/test_lone_wolf_inference.py",
+              "kaggle/lone-wolf-howler-retrain/Lone-Wolf-Howler-Retrain.ipynb": "scripts/Lone-Wolf-Howler-Retrain.ipynb",
+          }
+          for source, destination in files.items():
+              path = Path(source)
+              if not path.is_file():
+                  raise FileNotFoundError(f"Missing source file: {source}")
+              api.upload_file(
+                  path_or_fileobj=str(path),
+                  path_in_repo=destination,
+                  repo_id=repo_id,
+                  repo_type="model",
+                  commit_message=f"Sync Lone-Wolf-Howler script: {path.name}",
+                  token=token,
+              )
+              print(f"[hf-sync] uploaded {source} -> {destination}")
+          print(f"[hf-sync] completed script sync to {repo_id}")
+          PY
       - name: Validate required Kaggle secrets
         shell: bash
         env:
