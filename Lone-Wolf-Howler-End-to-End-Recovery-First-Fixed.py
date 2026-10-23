@@ -75,8 +75,8 @@ os.environ.setdefault("BITSANDBYTES_NOWELCOME", "1")
 # =============================================================================
 
 HF_USER = os.environ.get("HF_USER", "aryansexter")
-HF_REPO = os.environ.get("HF_REPO", "Lone-Wolf-Howler")
-HF_REPO_ID = f"{HF_USER}/{HF_REPO}"
+HF_REPO = os.environ.get("HF_REPO", "Lone-Wolf-Howler").strip()
+HF_REPO_ID = HF_REPO if "/" in HF_REPO else f"{HF_USER}/{HF_REPO}"
 
 RUNTIME_HF_REPO = os.environ.get("RUNTIME_HF_REPO", "Lone-Wolf-Howler-Runtime")
 RUNTIME_HF_REPO_ID = f"{HF_USER}/{RUNTIME_HF_REPO}"
@@ -115,6 +115,7 @@ PERMANENT_GRPO_CHECKPOINT_DIR = os.path.join(SCRATCH_BASE_DIR, "grpo_checkpoints
 PERMANENT_EXPORT_DIR = os.path.join(SCRATCH_BASE_DIR, "gguf_ready_model_v5")
 DOWNLOADED_FP16_DIR = os.path.join(SCRATCH_BASE_DIR, "downloaded_fp16_model")
 GGUF_OUTPUT_DIR = os.path.join(SCRATCH_BASE_DIR, "gguf_quantized_models_v5")
+GGUF_KAGGLE_OUTPUT_DIR = os.path.join(KAGGLE_WORKING_DIR, "gguf")
 DOWNLOADED_DATA_DIR = os.path.join(KAGGLE_WORKING_DIR, "extra_data")
 
 RAG_INDEX_DIR = os.path.join(STATE_BASE_DIR, "rag_index")
@@ -1470,8 +1471,66 @@ def _ensure_f16_gguf(fp16_dir: str, converter: str) -> str:
     return f16
 
 
+def _stage_gguf_for_publication(path: str) -> str:
+    """Keep a validated copy in Kaggle's downloadable working directory when space allows."""
+    source_info = _gguf_structural_check(path)
+    os.makedirs(GGUF_KAGGLE_OUTPUT_DIR, exist_ok=True)
+    dest = os.path.join(GGUF_KAGGLE_OUTPUT_DIR, os.path.basename(path))
+    if os.path.abspath(path) == os.path.abspath(dest):
+        return dest
+
+    if os.path.isfile(dest):
+        try:
+            existing = _gguf_structural_check(dest)
+            if (existing["size_bytes"] == source_info["size_bytes"]
+                    and existing["sha256"] == source_info["sha256"]):
+                log(f"[GGUF export] reusing verified Kaggle output: {dest}")
+                return dest
+        except Exception:
+            pass
+
+    free_mb = _free_disk_mb(KAGGLE_WORKING_DIR)
+    needed_mb = source_info["size_mb"] + 128
+    if free_mb >= 0 and free_mb < needed_mb:
+        log(
+            f"[GGUF export] /kaggle/working has {free_mb:.0f} MB free; "
+            f"needs about {needed_mb:.0f} MB. Will upload the validated source to "
+            "Hugging Face as durable storage."
+        )
+        return path
+
+    tmp = dest + ".partial"
+    try:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        shutil.copy2(path, tmp)
+        staged = _gguf_structural_check(tmp)
+        if (staged["size_bytes"] != source_info["size_bytes"]
+                or staged["sha256"] != source_info["sha256"]):
+            raise RuntimeError(f"Staged GGUF verification mismatch: {tmp}")
+        os.replace(tmp, dest)
+        _gguf_structural_check(dest)
+        log(f"[GGUF export] saved verified artifact: {dest} ({staged['size_bytes']} bytes)")
+        return dest
+    except Exception as exc:
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
+        log(
+            f"[GGUF export] could not retain local copy ({exc}); "
+            "the validated source will be uploaded to Hugging Face."
+        )
+        return path
+
+
 @retry(tries=MAX_HF_UPLOAD_RETRIES, delay=5.0, label="HF gguf upload")
 def _publish_gguf_hf(path: str) -> None:
+    # Validate existence, non-zero size, GGUF magic, and checksum before any upload.
+    _gguf_structural_check(path)
+    path = _stage_gguf_for_publication(path)
+    _gguf_structural_check(path)
     token = get_hf_token()
     if not token:
         raise RuntimeError("HF_TOKEN required for upload")

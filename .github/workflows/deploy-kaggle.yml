@@ -18,45 +18,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Sync source scripts to Hugging Face
-        shell: bash
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_REPO: ${{ secrets.HF_REPO }}
-        run: |
-          test -n "$HF_TOKEN" || (echo "Missing repository secret HF_TOKEN" >&2; exit 1)
-          python -m pip install --quiet --upgrade "huggingface_hub>=0.30.0"
-          python - <<'PY'
-          import os
-          from pathlib import Path
-          from huggingface_hub import HfApi, create_repo
-
-          token = os.environ["HF_TOKEN"]
-          repo_id = os.environ.get("HF_REPO", "").strip() or "aryansexter/Lone-Wolf-Howler"
-          api = HfApi(token=token)
-          create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, token=token)
-          files = {
-              "Lone-Wolf-Howler-End-to-End-Recovery-First-Fixed.py": "scripts/Lone-Wolf-Howler-End-to-End-Recovery-First-Fixed.py",
-              "Lone-Wolf-Howler-End-to-End-Recovery-First-Test.py": "scripts/Lone-Wolf-Howler-End-to-End-Recovery-First-Test.py",
-              "lone_wolf_inference.py": "scripts/lone_wolf_inference.py",
-              "tests/test_lone_wolf_inference.py": "scripts/tests/test_lone_wolf_inference.py",
-              "kaggle/lone-wolf-howler-retrain/Lone-Wolf-Howler-Retrain.ipynb": "scripts/Lone-Wolf-Howler-Retrain.ipynb",
-          }
-          for source, destination in files.items():
-              path = Path(source)
-              if not path.is_file():
-                  raise FileNotFoundError(f"Missing source file: {source}")
-              api.upload_file(
-                  path_or_fileobj=str(path),
-                  path_in_repo=destination,
-                  repo_id=repo_id,
-                  repo_type="model",
-                  commit_message=f"Sync Lone-Wolf-Howler script: {path.name}",
-                  token=token,
-              )
-              print(f"[hf-sync] uploaded {source} -> {destination}")
-          print(f"[hf-sync] completed script sync to {repo_id}")
-          PY
       - name: Validate required Kaggle secrets
         shell: bash
         env:
@@ -84,18 +45,14 @@ jobs:
               json.dump({"username": os.environ["KAGGLE_USER"], "key": os.environ["KAGGLE_API_TOKEN"]}, f)
           os.chmod(p, 0o600)
           PY
-      - name: Set notebook owner and inject secrets
+      - name: Set notebook owner metadata
         shell: bash
         env:
           KAGGLE_USER: ${{ secrets.KAGGLE_USER }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          MODEL_ID: ${{ secrets.MODEL_ID }}
-          HF_REPO: ${{ secrets.HF_REPO }}
         run: |
           python - <<'PY'
           import json, os
 
-          # Update notebook slug & owner to match existing kernel
           meta_path = "kaggle/lone-wolf-howler-retrain/kernel-metadata.json"
           with open(meta_path, encoding="utf-8") as f:
               meta = json.load(f)
@@ -103,26 +60,6 @@ jobs:
           meta["title"] = "Lone-Wolf-Howler Guarded Retraining"
           with open(meta_path, "w", encoding="utf-8") as f:
               json.dump(meta, f, indent=2)
-
-          nb_path = "kaggle/lone-wolf-howler-retrain/Lone-Wolf-Howler-Retrain.ipynb"
-          with open(nb_path, encoding="utf-8") as f:
-              nb = json.load(f)
-
-          env_injections = []
-          for key in ["HF_TOKEN", "MODEL_ID", "HF_REPO"]:
-              val = os.environ.get(key, "").strip()
-              if val:
-                  env_injections.append(f"os.environ[{repr(key)}] = {repr(val)}")
-
-          if env_injections:
-              inject_code = "import os\n" + "\n".join(env_injections) + "\n"
-              for cell in nb.get("cells", []):
-                  if cell.get("cell_type") == "code":
-                      cell["source"].insert(0, inject_code)
-                      break
-              with open(nb_path, "w", encoding="utf-8") as f:
-                  json.dump(nb, f, indent=2)
-              print(f"Injected environment variables into notebook: {len(env_injections)}")
           PY
       - name: Push notebook and start Kaggle run
         shell: bash
@@ -131,16 +68,27 @@ jobs:
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
         run: |
           for i in {1..6}; do
+            set +e
             out=$(kaggle kernels push -p kaggle/lone-wolf-howler-retrain 2>&1)
+            push_status=$?
+            set -e
             echo "$out"
             if echo "$out" | grep -qi "successfully pushed"; then
               echo "Push to Kaggle succeeded!"
               exit 0
             fi
-            if echo "$out" | grep -qi "error"; then
-              echo "Kaggle push failed (attempt $i/6). Waiting 30s before retry..."
+            if echo "$out" | grep -Eiq "Maximum (batch GPU session count|weekly GPU quota)"; then
+              echo "Kaggle refused to start the kernel because GPU capacity or weekly quota is exhausted. No training or GGUF export started." >&2
+              exit 1
+            fi
+            if ! echo "$out" | grep -qi "error"; then
+              echo "Kaggle push failed with status $push_status and no recognized transient error." >&2
+              exit 1
+            fi
+            if [ "$i" -lt 6 ]; then
+              echo "Transient Kaggle push failure (attempt $i/6). Waiting 30s before retry..."
               sleep 30
             fi
           done
-          echo "Failed to push kernel to Kaggle after 6 attempts." >&2
+          echo "Failed to push kernel to Kaggle after 6 transient retries." >&2
           exit 1
