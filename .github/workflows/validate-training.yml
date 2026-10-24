@@ -5,11 +5,13 @@ on:
     paths:
       - "*.py"
       - "tests/**"
+      - "kaggle/**/*.ipynb"
       - ".github/workflows/validate-training.yml"
   pull_request:
     paths:
       - "*.py"
       - "tests/**"
+      - "kaggle/**/*.ipynb"
       - ".github/workflows/validate-training.yml"
 
 permissions:
@@ -31,5 +33,18 @@ jobs:
             Shadow-Ronin-4B-End-to-End-Recovery-First-Master.py \
             Lone-Wolf-Howler-v10.1-Completion-Release.py \
             lone_wolf_inference.py
+      - name: Validate Kaggle notebook JSON and code cells
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("kaggle/lone-wolf-howler-retrain/Lone-Wolf-Howler-Retrain.ipynb")
+          notebook = json.loads(path.read_text(encoding="utf-8"))
+          for index, cell in enumerate(notebook.get("cells", [])):
+              if cell.get("cell_type") == "code":
+                  compile("".join(cell.get("source", [])), f"{path}#cell-{index}", "exec")
+          print(f"Validated notebook JSON and code cells: {path}")
+          PY
       - name: Run output regression tests
         run: python -m unittest discover -s tests -v
